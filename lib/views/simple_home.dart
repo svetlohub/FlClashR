@@ -1,8 +1,8 @@
-import 'package:fl_clash/common/common.dart';
-import 'package:fl_clash/common/russia_preset.dart';
-import 'package:fl_clash/controller.dart';
-import 'package:fl_clash/providers/providers.dart';
-import 'package:fl_clash/views/tools.dart';
+import 'package:flclashx/common/russia_preset.dart';
+import 'package:flclashx/controller.dart';
+import 'package:flclashx/providers/providers.dart';
+import 'package:flclashx/common/common.dart';
+import 'package:flclashx/views/tools.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -48,10 +48,7 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
   }
 
   Future<void> _toggleConnection(bool isStarted) async {
-    await appController.updateStatus(
-      !isStarted,
-      isInit: !ref.read(initProvider),
-    );
+    await appController.updateStatus(!isStarted);
   }
 
   Future<void> _openModes() async {
@@ -198,7 +195,9 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
 
   @override
   Widget build(BuildContext context) {
-    final isStarted = ref.watch(isStartProvider);
+    final isStarted = ref.watch(
+      runTimeProvider.select((state) => state != null),
+    );
     final runTime = ref.watch(runTimeProvider);
 
     final statusColor = isStarted ? _accentGreen : _textTertiary;
@@ -209,9 +208,7 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
         ? _accentGreen.withValues(alpha: 0.3)
         : _accentRed.withValues(alpha: 0.3);
     final powerSubtitle = isStarted
-        ? (runTime != null
-              ? 'Работает: ${utils.getTimeText(runTime)}'
-              : 'Подключено')
+        ? (runTime != null ? 'Работает: $runTime сек' : 'Подключено')
         : 'Нажмите для подключения';
 
     return Scaffold(
