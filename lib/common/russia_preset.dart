@@ -79,7 +79,6 @@ void applyRussia2026Preset(WidgetRef ref) {
       ipv6: false,
       unifiedDelay: true,
       tcpConcurrent: false,
-      rules: _russia2026Rules,
     ),
   );
   ref.read(overrideDnsProvider.notifier).value = true;
