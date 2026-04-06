@@ -1,6 +1,7 @@
 import 'package:flclashx/enum/enum.dart';
 import 'package:flclashx/models/models.dart';
 import 'package:flclashx/providers/config.dart';
+import 'package:flclashx/state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 const _russia2026Dns = Dns(
@@ -68,7 +69,7 @@ const _russia2026Rules = [
 ];
 
 void applyRussia2026Preset(WidgetRef ref) {
-  ref.read(patchClashConfigProvider.notifier).update(
+  ref.read(patchClashConfigProvider.notifier).updateState(
     (state) => state.copyWith(
       dns: _russia2026Dns,
       tun: _russia2026Tun,
@@ -82,7 +83,7 @@ void applyRussia2026Preset(WidgetRef ref) {
     ),
   );
   ref.read(overrideDnsProvider.notifier).value = true;
-  ref.read(vpnSettingProvider.notifier).update(
+  ref.read(vpnSettingProvider.notifier).updateState(
     (state) => state.copyWith(
       enable: true,
       systemProxy: false,
@@ -90,7 +91,7 @@ void applyRussia2026Preset(WidgetRef ref) {
       allowBypass: true,
     ),
   );
-  ref.read(networkSettingProvider.notifier).update(
+  ref.read(networkSettingProvider.notifier).updateState(
     (state) => state.copyWith(systemProxy: false),
   );
 }

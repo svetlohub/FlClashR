@@ -48,7 +48,7 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
   }
 
   Future<void> _toggleConnection(bool isStarted) async {
-    await appController.updateStatus(!isStarted);
+    await globalState.appController.updateStatus(!isStarted);
   }
 
   Future<void> _openModes() async {
@@ -181,7 +181,7 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
       );
       final url = controller.text.trim();
       if (shouldImport != true || url.isEmpty) return;
-      await appController.addProfileFormURL(url);
+      await globalState.appController.addProfileFormURL(url);
     } finally {
       controller.dispose();
     }
