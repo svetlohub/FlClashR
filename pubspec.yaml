@@ -1,15 +1,39 @@
-# Добавь path_provider в блок dependencies (если его там еще нет)
-dependencies:
-  path_provider: ^2.1.2
+name: fl_clash
+description: A multi-platform proxy client based on ClashMeta.
+publish_to: 'none'
+version: 1.0.0+1
 
-# Добавь flutter_launcher_icons в блок dev_dependencies
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_riverpod: ^2.4.9
+  path_provider: ^2.1.2
+  shared_preferences: ^2.2.2
+  intl: ^0.19.0
+  # Другие зависимости подтянутся из твоих плагинов в папке /plugins
+
 dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
   flutter_launcher_icons: ^0.13.1
 
-# Вставь этот блок в самый конец файла
+# Настройка иконок (заменится при запуске команды)
 flutter_launcher_icons:
   android: "ic_launcher"
   ios: false
   image_path: "assets/images/icon_black.png"
-  adaptive_icon_background: "#FFFFFF"
+  adaptive_icon_background: "#0A0A0A"
   adaptive_icon_foreground: "assets/images/icon_black.png"
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/images/
+    - assets/fonts/
+    - assets/data/
