@@ -1,4 +1,5 @@
 import java.util.Properties
+import java.io.File
 
 plugins {
     id("com.android.application")
@@ -21,7 +22,10 @@ val isRelease = mStoreFile.exists()
 
 android {
     namespace = "com.follow.clashx"
-    compileSdk = 34 // Установил стабильную версию 34
+    compileSdk = 34
+
+    // Принудительно устанавливаем стабильную версию NDK для совместимости с CMake
+    ndkVersion = "25.2.9519653"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -39,6 +43,13 @@ android {
         targetSdk = 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+
+        // Указываем CMake использовать Ninja для ускорения сборки в Codespaces
+        externalNativeBuild {
+            cmake {
+                arguments("-GNinja")
+            }
+        }
     }
 
     signingConfigs {
