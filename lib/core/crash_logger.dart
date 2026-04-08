@@ -1,61 +1,24 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 class CrashLogger {
-  CrashLogger._();
-  static final CrashLogger instance = CrashLogger._();
-
-  File? _logFile;
-
-  Future<void> init() async {
+  static Future<void> logError(dynamic error, dynamic stackTrace) async {
     try {
       final directory = await getApplicationDocumentsDirectory();
-      _logFile = File('${directory.path}/flclashr_crash_log.txt');
+      final file = File('${directory.path}/crash_log.txt');
+      final now = DateTime.now();
       
-      if (!await _logFile!.exists()) {
-        await _logFile!.create();
-      }
+      String logEntry = "--- ${now.toString()} ---\nERROR: $error\nSTACKTRACE: $stackTrace\n\n";
       
-      logInfo("=== Запуск приложения: ${DateTime.now().toIso8601String()} ===");
+      await file.writeAsString(logEntry, mode: FileMode.append);
+      print("Error logged to file: ${file.path}");
     } catch (e) {
-      debugPrint("Ошибка инициализации CrashLogger: $e");
+      print("Failed to write log: $e");
     }
   }
 
-  Future<void> logError(dynamic error, StackTrace? stackTrace) async {
-    final timestamp = DateTime.now().toIso8601String();
-    final logMessage = '''
-[ОШИБКА] [$timestamp]
-Исключение: $error
-Стек вызовов:
-${stackTrace ?? 'Стек отсутствует'}
-----------------------------------------
-''';
-
-    debugPrint(logMessage);
-    if (_logFile != null) {
-      try {
-        await _logFile!.writeAsString(logMessage, mode: FileMode.append);
-      } catch (e) {
-        debugPrint("Ошибка записи в файл: $e");
-      }
-    }
+  static Future<String> getLogPath() async {
+    final directory = await getApplicationDocumentsDirectory();
+    return '${directory.path}/crash_log.txt';
   }
-
-  Future<void> logInfo(String message) async {
-    final timestamp = DateTime.now().toIso8601String();
-    final logMessage = '[ИНФО] [$timestamp] $message\n';
-    
-    debugPrint(logMessage);
-    if (_logFile != null) {
-      try {
-        await _logFile!.writeAsString(logMessage, mode: FileMode.append);
-      } catch (e) {
-        debugPrint("Ошибка записи инфо в файл: $e");
-      }
-    }
-  }
-
-  String? get logFilePath => _logFile?.path;
 }
