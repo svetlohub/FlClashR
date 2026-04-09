@@ -52,6 +52,22 @@ dependencies:
   win32: ^5.15.0
   pretty_qr_code: ^3.3.0
   flutter_cache_manager: ^3.4.1
+  animations: ^2.0.11
+  dynamic_color: ^1.7.0
+  file_picker: ^8.1.7
+  mobile_scanner: ^5.2.3
+  network_info_plus: ^6.1.1
+  qr_flutter: ^4.1.0
+  shelf: ^1.4.2
+  shelf_router: ^1.1.4
+  proxy:
+    git:
+      url: https://github.com/chen08209/proxy.git
+      ref: main
+  window_ext:
+    git:
+      url: https://github.com/chen08209/window_ext.git
+      ref: main
   re_editor:
     git:
       url: https://github.com/chen08209/re-editor.git
