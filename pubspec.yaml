@@ -1,4 +1,4 @@
-name: fl_clashx
+name: flclashx
 description: A multi-platform proxy client based on ClashMeta.
 publish_to: 'none'
 version: 1.0.0+1
