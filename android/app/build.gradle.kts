@@ -15,17 +15,16 @@ val localProperties = Properties().apply {
 }
 
 val mStoreFile: File = file("keystore.jks")
-val mStorePassword: String? = localProperties.getProperty("storePassword") ?: "123456"
-val mKeyAlias: String? = localProperties.getProperty("keyAlias") ?: "flclashr"
-val mKeyPassword: String? = localProperties.getProperty("keyPassword") ?: "123456"
+val mStorePassword: String = localProperties.getProperty("storePassword") ?: "123456"
+val mKeyAlias: String = localProperties.getProperty("keyAlias") ?: "flclashr"
+val mKeyPassword: String = localProperties.getProperty("keyPassword") ?: "123456"
 val isRelease = mStoreFile.exists()
 
 android {
-    namespace = "com.follow.clashx"
-    compileSdk = 34
+    namespace = "com.follow.clashr"
+    compileSdk = 35
 
-    // Принудительно устанавливаем стабильную версию NDK для совместимости с CMake
-    ndkVersion = "25.2.9519653"
+    ndkVersion = "27.0.12077973"
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -40,16 +39,9 @@ android {
     defaultConfig {
         applicationId = "com.follow.clashr"
         minSdk = 23
-        targetSdk = 34
+        targetSdk = 35
         versionCode = flutter.versionCode
         versionName = flutter.versionName
-
-        // Указываем CMake использовать Ninja для ускорения сборки в Codespaces
-        externalNativeBuild {
-            cmake {
-                arguments("-GNinja")
-            }
-        }
     }
 
     signingConfigs {
@@ -78,6 +70,6 @@ flutter {
 dependencies {
     implementation(project(":core"))
     implementation("androidx.core:core-splashscreen:1.0.1")
-    implementation("androidx.appcompat:appcompat:1.6.1")
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.0.4")
+    implementation("androidx.appcompat:appcompat:1.7.0")
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
