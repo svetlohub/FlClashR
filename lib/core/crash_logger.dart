@@ -4,19 +4,21 @@ import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
 class CrashLogger {
+  CrashLogger._();
+  static final CrashLogger instance = CrashLogger._();
+
   static const _logFileName = 'flclashr_debug.log';
   static const _maxLogSizeBytes = 2 * 1024 * 1024; // 2MB
 
-  static File? _logFile;
-  static bool _initialized = false;
+  File? _logFile;
+  bool _initialized = false;
 
-  static Future<void> init() async {
+  Future<void> init() async {
     if (_initialized) return;
     try {
       final dir = await getApplicationDocumentsDirectory();
       _logFile = File('${dir.path}/$_logFileName');
 
-      // Ротация: если файл > 2MB — очищаем
       if (_logFile!.existsSync()) {
         final size = await _logFile!.length();
         if (size > _maxLogSizeBytes) {
@@ -24,39 +26,38 @@ class CrashLogger {
         }
       }
 
-      await _write('=== CrashLogger initialized: ${DateTime.now()} ===');
+      await _write('=== FlClashR CrashLogger started: ${DateTime.now()} ===');
+      await _write('Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}');
       _initialized = true;
+
+      debugPrint('[CrashLogger] Log file: ${_logFile!.path}');
     } catch (e) {
       debugPrint('[CrashLogger] init failed: $e');
     }
   }
 
-  static Future<void> log(String message, {String level = 'INFO'}) async {
+  Future<void> log(String message, {String level = 'INFO'}) async {
     final entry = '[${DateTime.now().toIso8601String()}] [$level] $message';
     debugPrint(entry);
     await _write(entry);
   }
 
-  static Future<void> logError(
-    dynamic error,
-    StackTrace? stack, {
-    String context = '',
-  }) async {
+  Future<void> logError(dynamic error, StackTrace? stack, {String context = ''}) async {
     final msg = StringBuffer();
-    msg.writeln('--- ERROR ${context.isNotEmpty ? "[$context]" : ""} ---');
-    msg.writeln('Time: ${DateTime.now().toIso8601String()}');
+    msg.writeln('━━━ ERROR ${context.isNotEmpty ? "[$context]" : ""} ━━━');
+    msg.writeln('Time:  ${DateTime.now().toIso8601String()}');
     msg.writeln('Error: $error');
     if (stack != null) {
       msg.writeln('Stack:');
-      msg.writeln(stack.toString().split('\n').take(20).join('\n'));
+      msg.writeln(stack.toString().split('\n').take(30).join('\n'));
     }
-    msg.writeln('--- END ERROR ---');
+    msg.writeln('━━━ END ERROR ━━━');
 
     debugPrint(msg.toString());
     await _write(msg.toString());
   }
 
-  static Future<void> _write(String content) async {
+  Future<void> _write(String content) async {
     if (_logFile == null) return;
     try {
       await _logFile!.writeAsString(
@@ -67,13 +68,13 @@ class CrashLogger {
     } catch (_) {}
   }
 
-  static Future<String> getLogPath() async {
+  Future<String> getLogPath() async {
     if (_logFile != null) return _logFile!.path;
     final dir = await getApplicationDocumentsDirectory();
     return '${dir.path}/$_logFileName';
   }
 
-  static Future<String> readLogs() async {
+  Future<String> readLogs() async {
     try {
       if (_logFile != null && _logFile!.existsSync()) {
         return await _logFile!.readAsString();
@@ -84,7 +85,7 @@ class CrashLogger {
     return 'No logs found';
   }
 
-  static Future<void> clearLogs() async {
+  Future<void> clearLogs() async {
     try {
       await _logFile?.writeAsString('');
       await log('Logs cleared by user');
