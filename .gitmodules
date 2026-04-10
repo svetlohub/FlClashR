@@ -1,10 +1,9 @@
 [submodule "plugins/flutter_distributor"]
 	path = plugins/flutter_distributor
-	url = git@github.com:pluralplay/flutter_distributor.git
+	url = https://github.com/pluralplay/flutter_distributor.git
 	branch = FlClash
-
 
 [submodule "core/Clash.Meta"]
 	path = core/Clash.Meta
-	url = git@github.com:pluralplay/xHomo.git
+	url = https://github.com/pluralplay/xHomo.git
 	branch = FlClashX
