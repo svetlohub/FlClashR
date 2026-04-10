@@ -10,6 +10,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Configure git to use HTTPS instead of SSH
+        run: |
+          git config --global url."https://github.com/".insteadOf "git@github.com:"
+
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -30,28 +34,31 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install NDK
+      - name: Install NDK 27
         run: |
           echo "y" | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "ndk;27.0.12077973"
           echo "NDK_HOME=$ANDROID_SDK_ROOT/ndk/27.0.12077973" >> $GITHUB_ENV
+          echo "ANDROID_NDK=$ANDROID_SDK_ROOT/ndk/27.0.12077973" >> $GITHUB_ENV
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: 3.32.8
+          flutter-version: '3.32.8'
           cache: true
 
-      - name: Install dependencies
+      - name: Install Flutter dependencies
         run: flutter pub get
 
       - name: Generate launcher icons
         run: dart run flutter_launcher_icons
 
-      - name: Setup core (native libs)
+      - name: Build native core (Go → .so)
         run: dart setup.dart android --out core
+        env:
+          ANDROID_NDK: ${{ env.NDK_HOME }}
 
-      - name: Generate code (freezed/riverpod)
+      - name: Generate Dart code (freezed/riverpod)
         run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Build APK
