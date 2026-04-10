@@ -29,7 +29,7 @@ void main() async {
     () {
       runApp(
         const ProviderScope(
-          child: Application(),
+          child: _AppLoader(),
         ),
       );
     },
@@ -37,4 +37,55 @@ void main() async {
       CrashLogger.instance.logError(error, stack, context: 'runZonedGuarded');
     },
   );
+}
+
+/// Показывает splash пока Flutter-движок инициализируется,
+/// затем передаёт управление основному приложению.
+/// Это устраняет серый экран при старте.
+class _AppLoader extends StatelessWidget {
+  const _AppLoader();
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData.dark(),
+      home: const _SplashGate(),
+    );
+  }
+}
+
+class _SplashGate extends StatefulWidget {
+  const _SplashGate();
+
+  @override
+  State<_SplashGate> createState() => _SplashGateState();
+}
+
+class _SplashGateState extends State<_SplashGate> {
+  bool _ready = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Даём Flutter один кадр отрисоваться, затем запускаем основное приложение
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        setState(() => _ready = true);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_ready) {
+      return const Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.white),
+        ),
+      );
+    }
+    return const Application();
+  }
 }
