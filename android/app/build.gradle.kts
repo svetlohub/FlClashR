@@ -21,7 +21,10 @@ val mKeyPassword: String = localProperties.getProperty("keyPassword") ?: "123456
 val isRelease = mStoreFile.exists()
 
 android {
-    namespace = "com.follow.clashr"
+    // namespace ДОЛЖЕН совпадать с package в Kotlin-файлах (com.follow.clashx)
+    // applicationId — уникальный ID нашего приложения (com.follow.clashr)
+    // Это разные вещи, их можно и нужно разделять
+    namespace = "com.follow.clashx"
     compileSdk = 36
 
     ndkVersion = "27.0.12077973"
@@ -74,5 +77,7 @@ dependencies {
     implementation(project(":core"))
     implementation("androidx.core:core-splashscreen:1.0.1")
     implementation("androidx.appcompat:appcompat:1.7.0")
+    implementation("com.google.code.gson:gson:2.10.1")
+    implementation("com.android.tools.smali:smali-dexlib2:3.0.9")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
 }
