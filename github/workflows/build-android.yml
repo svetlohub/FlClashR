@@ -50,7 +50,10 @@ jobs:
         run: flutter pub get
 
       - name: Generate launcher icons
-        run: dart run flutter_launcher_icons
+        run: |
+          dart run flutter_launcher_icons
+          echo "=== Generated icon files ==="
+          find android/app/src/main/res -name "ic_launcher*" | head -20
 
       - name: Build native core (Go → .so)
         run: dart setup.dart android --out core
@@ -60,7 +63,7 @@ jobs:
       - name: Generate Dart code (freezed/riverpod)
         run: dart run build_runner build --delete-conflicting-outputs
 
-      - name: Build APK (arm64, size-optimized)
+      - name: Build APK
         run: flutter build apk --release --target-platform android-arm64 --split-per-abi
 
       - name: Upload APK (arm64)
