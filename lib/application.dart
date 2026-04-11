@@ -72,6 +72,8 @@ class ApplicationState extends ConsumerState<Application> {
       stack,
       context: 'AppController.init',
     );
+  }
+});
     // В release-режиме показываем диалог вместо серого экрана
     final ctx = globalState.navigatorKey.currentContext;
     if (ctx != null && ctx.mounted) {
