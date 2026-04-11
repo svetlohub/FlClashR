@@ -58,14 +58,47 @@ class ApplicationState extends ConsumerState<Application> {
     _autoUpdateProfilesTask();
     globalState.appController = AppController(context, ref);
     WidgetsBinding.instance.addPostFrameCallback((timeStamp) async {
-      final currentContext = globalState.navigatorKey.currentContext;
-      if (currentContext != null) {
-        globalState.appController = AppController(currentContext, ref);
-      }
-      await globalState.appController.init();
-      globalState.appController.initLink();
-      app?.initShortcuts();
-    });
+  final currentContext = globalState.navigatorKey.currentContext;
+  if (currentContext != null) {
+    globalState.appController = AppController(currentContext, ref);
+  }
+  try {
+    await globalState.appController.init();
+    globalState.appController.initLink();
+    app?.initShortcuts();
+  } catch (e, stack) {
+    await CrashLogger.instance.logError(
+      e,
+      stack,
+      context: 'AppController.init',
+    );
+    // В release-режиме показываем диалог вместо серого экрана
+    final ctx = globalState.navigatorKey.currentContext;
+    if (ctx != null && ctx.mounted) {
+      showDialog(
+        context: ctx,
+        barrierDismissible: false,
+        builder: (_) => AlertDialog(
+          backgroundColor: const Color(0xFF1A1A1A),
+          title: const Text(
+            'Ошибка запуска',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Text(
+            e.toString(),
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(_),
+              child: const Text('OK', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
+      );
+    }
+  }
+});
   }
 
   void _autoUpdateGroupTask() {
