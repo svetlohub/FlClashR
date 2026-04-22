@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ffi';
 import 'dart:isolate';
 import 'dart:ui';
 
@@ -35,8 +36,7 @@ void main() async {
   };
 
   // CRITICAL: инициализирует globalState.appState (объявлен как `late`).
-  // Без этого все Riverpod-провайдеры падают с LateInitializationError
-  // → Flutter молча показывает серый экран в release-сборке.
+  // Без этого Riverpod-провайдеры падают с LateInitializationError → серый экран.
   await globalState.initApp(0);
 
   runZonedGuarded(
@@ -54,49 +54,40 @@ void main() async {
 }
 
 // ── VPN background service entry point (Android) ─────────────────────────────
-// Kotlin вызывает через DartExecutor.executeDartEntrypoint("_service").
-//
-// Протокол подключения изолятов:
-// 1. Создаём RawReceivePort — канал входящих сообщений от main isolate
-// 2. Регистрируем в IsolateNameServer (dart:ui) под serviceIsolate
-// 3. Ищем ClashLib.receiverPort main isolate по имени mainIsolate
-// 4. Отправляем ему наш sendPort → ClashLib._canSendCompleter разблокируется
-// 5. Подключаем nativePort к libclash.so (ClashLibHandler.attachMessagePort)
-// 6. Вешаем обработчик входящих invoke-сообщений
-// 7. Сигнализируем Kotlin: tile.signalServiceReady()
+// Вызывается Kotlin через DartExecutor.executeDartEntrypoint("_service").
+// dart:ffi — нужен для SendPort.nativePort
+// dart:ui  — нужен для IsolateNameServer
 @pragma('vm:entry-point')
 void _service() async {
   WidgetsFlutterBinding.ensureInitialized();
   globalState.isService = true;
   await globalState.initApp(0);
 
-  // RawReceivePort.sendPort.nativePort доступен (в отличие от ReceivePort.sendPort)
-  // IsolateNameServer — из dart:ui (не dart:isolate!)
-  final rPort = RawReceivePort();
+  final rPort = ReceivePort();
 
   IsolateNameServer.removePortNameMapping(serviceIsolate);
   IsolateNameServer.registerPortWithName(rPort.sendPort, serviceIsolate);
 
-  // Отправляем наш sendPort в ClashLib.receiverPort (main isolate)
-  // ClashLib слушает: if (message is SendPort) -> _canSendCompleter.complete(true)
+  // Отправляем sendPort в ClashLib.receiverPort (main isolate)
+  // → _canSendCompleter.complete(true) → sendMessage() разблокируется
   final mainPort = IsolateNameServer.lookupPortByName(mainIsolate);
   mainPort?.send(rPort.sendPort);
 
   // Инициализируем ClashLibHandler: открывает libclash.so
   final handler = clashLibHandler;
 
-  // Подключаем nativePort: libclash будет присылать ответы в этот isolate
+  // nativePort доступен благодаря import 'dart:ffi'
   if (handler != null) {
     handler.attachMessagePort(rPort.sendPort.nativePort);
   }
 
-  // Обрабатываем входящие invoke-запросы от main isolate
-  rPort.handler = (dynamic message) {
+  // Слушаем входящие invoke-запросы от main isolate
+  rPort.listen((message) {
     if (handler != null && message is String) {
       handler.invokeAction(message);
     }
-  };
+  });
 
-  // Kotlin ждёт этот сигнал чтобы выполнить отложенный START/STOP
+  // Сигнализируем Kotlin: Dart готов → выполнить отложенный START/STOP
   await tile?.signalServiceReady();
 }
