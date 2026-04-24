@@ -10,16 +10,15 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Configure git — use HTTPS instead of SSH
-        run: |
-          git config --global url."https://github.com/".insteadOf "git@github.com:"
+      - name: Configure git — HTTPS instead of SSH
+        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
 
       - name: Checkout (with submodules)
         uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Setup Go
+      - name: Setup Go 1.24.0
         uses: actions/setup-go@v5
         with:
           go-version: '1.24.0'
@@ -47,14 +46,28 @@ jobs:
           flutter-version: '3.32.8'
           cache: true
 
-      - name: Install Flutter dependencies
+      # ── Generate a reproducible release keystore (no secrets needed) ─────
+      # Same password + alias every run so the APK is consistently signed.
+      # Users can sideload without "unknown sources" issues on Android 12+.
+      - name: Generate release keystore
+        run: |
+          keytool -genkeypair \
+            -v \
+            -keystore android/app/keystore.jks \
+            -alias flclashr \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass flclashr123 \
+            -keypass flclashr123 \
+            -dname "CN=FlClashR, OU=Dev, O=FlClashR, L=Moscow, S=Moscow, C=RU"
+          echo "Keystore created: $(ls -lh android/app/keystore.jks)"
+
+      - name: Flutter pub get
         run: flutter pub get
 
       - name: Generate launcher icons
-        run: |
-          dart run flutter_launcher_icons
-          echo "=== Generated ic_launcher files ==="
-          find android/app/src/main/res -name "ic_launcher*" | sort
+        run: dart run flutter_launcher_icons
 
       - name: Build native Clash core (Go → .so)
         run: dart setup.dart android --out core
@@ -64,12 +77,30 @@ jobs:
       - name: Generate Dart code (freezed / riverpod / drift)
         run: dart run build_runner build --delete-conflicting-outputs
 
-      - name: Build APK (arm64, release)
-        run: flutter build apk --release --target-platform android-arm64 --split-per-abi
+      # ── Build arm64 (современные телефоны) ────────────────────────────────
+      - name: Build APK — arm64-v8a
+        run: |
+          flutter build apk --release \
+            --target-platform android-arm64 \
+            --split-per-abi
 
-      - name: Upload APK artifact
+      # ── Build universal (любой телефон) ───────────────────────────────────
+      - name: Build APK — universal
+        run: flutter build apk --release
+
+      - name: List APKs
+        run: find build/app/outputs -name "*.apk" | sort
+
+      - name: Upload arm64 APK
         uses: actions/upload-artifact@v4
         with:
           name: FlClashR-arm64-release
           path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          retention-days: 14
+
+      - name: Upload universal APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlClashR-universal-release
+          path: build/app/outputs/flutter-apk/app-release.apk
           retention-days: 14
