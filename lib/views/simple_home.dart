@@ -17,23 +17,48 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// ─── Palette ──────────────────────────────────────────────────────────────────
-const _bg        = Color(0xFF0A0A0A);
-const _surface   = Color(0xFF1A1A1A);
-const _surfaceHi = Color(0xFF252525);
-const _green     = Color(0xFF00FF9F);
-const _greenDk   = Color(0xFF00CC7F);
-const _red       = Color(0xFFFF3B5C);
-const _redLt     = Color(0xFFFF6B81);
-const _blue      = Color(0xFF00BFFF);
-const _textPri   = Color(0xFFFFFFFF);
-const _textSec   = Color(0xFFAAAAAA);
-const _textTer   = Color(0xFF555555);
-const _divider   = Color(0xFF2A2A2A);
+// ─── Palette — light/dark adaptive ───────────────────────────────────────────
+// Accent set: violet (trust+care), sky-blue (openness), lime (energy),
+// orange (optimism), slate (reliability)
+const _violet    = Color(0xFF7B5EA7);
+const _violetLt  = Color(0xFF9D7EC9);
+const _sky       = Color(0xFF4BBFFF);
+const _skyLt     = Color(0xFF78D4FF);
+const _lime      = Color(0xFF8BC34A);
+const _limeDk    = Color(0xFF6DA033);
+const _orange    = Color(0xFFFF7043);
+const _slate     = Color(0xFF78909C);
+
+// Dark theme surfaces
+const _bgDark    = Color(0xFF0F0F14);
+const _surfDark  = Color(0xFF1C1C26);
+const _surfHiDk  = Color(0xFF272733);
+const _divDark   = Color(0xFF2E2E3E);
+
+// Light theme surfaces  
+const _bgLight   = Color(0xFFF4F4F8);
+const _surfLight = Color(0xFFFFFFFF);
+const _surfHiLt  = Color(0xFFEEEEF5);
+const _divLight  = Color(0xFFDDDDE8);
+
+// Text — always referenced via theme, not hardcoded
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Shared import helper
-// Supports: Clash YAML, base64-encoded proxy lists, single proxy URIs
+// Theme helper
+// ─────────────────────────────────────────────────────────────────────────────
+extension _ThemeX on BuildContext {
+  bool get isDark => Theme.of(this).brightness == Brightness.dark;
+  Color get bg       => isDark ? _bgDark    : _bgLight;
+  Color get surf     => isDark ? _surfDark  : _surfLight;
+  Color get surfHi   => isDark ? _surfHiDk  : _surfHiLt;
+  Color get divider  => isDark ? _divDark   : _divLight;
+  Color get textPri  => isDark ? const Color(0xFFEEEEF5) : const Color(0xFF1A1A2E);
+  Color get textSec  => isDark ? const Color(0xFF9999BB) : const Color(0xFF666688);
+  Color get textTer  => isDark ? const Color(0xFF4A4A6A) : const Color(0xFFAAAAAA);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared import helper — supports YAML, base64, single URIs
 // ─────────────────────────────────────────────────────────────────────────────
 Future<void> doProfileImport({
   required String url,
@@ -55,72 +80,48 @@ Future<void> doProfileImport({
   final sendHd = prefs.getBool('sendDeviceHeaders') ?? true;
   final base   = Profile.normal(url: url);
 
-  // ── Attempt 1: standard Profile.update() — works for Clash YAML subs ──────
+  // Attempt 1: standard Profile.update() — works for Clash YAML subs
   Profile? profile;
   Object? firstError;
   try {
     profile = await base
         .update(shouldSendHeaders: sendHd)
-        .timeout(
-          const Duration(seconds: 60),
-          onTimeout: () => throw 'Превышено время ожидания (60 с). Проверьте ссылку.',
-        );
-  } catch (e) {
-    firstError = e;
-  }
+        .timeout(const Duration(seconds: 60),
+            onTimeout: () => throw 'Превышено время ожидания (60 с).');
+  } catch (e) { firstError = e; }
 
-  // ── Attempt 2: download raw + fix/convert ─────────────────────────────────
+  // Attempt 2: download raw + fix YAML or convert format
   if (profile == null) {
     Uint8List? rawBytes;
     try {
-      final response = await request
+      final resp = await request
           .getFileResponseForUrl(url)
           .timeout(const Duration(seconds: 30));
-      rawBytes = response.data;
-    } catch (e) {
-      throw firstError ?? e;
-    }
+      rawBytes = resp.data;
+    } catch (e) { throw firstError ?? e; }
 
-    if (rawBytes == null || rawBytes.isEmpty) {
-      throw firstError ?? 'Сервер вернул пустой ответ.';
-    }
-
+    if (rawBytes == null || rawBytes.isEmpty) throw firstError ?? 'Пустой ответ сервера.';
     final rawText = utf8.decode(rawBytes, allowMalformed: true).trim();
     final origErr = firstError?.toString() ?? '';
-    final isYamlErr = origErr.contains('yaml') ||
-        origErr.contains('mapping') ||
+    final isYamlErr = origErr.contains('yaml') || origErr.contains('mapping') ||
         origErr.contains('line ');
 
-    // Step 2a: looks like Clash YAML but has unquoted colons in values
-    // (most common cause: proxy names like "DE: Frankfurt" from paid services)
+    // 2a: valid Clash YAML with unquoted colon values (paid VPN server names)
     if (isYamlErr && _looksLikeClashYaml(rawText)) {
-      final fixed = _fixYamlColonValues(rawText);
-      try {
-        profile = await base.saveFileWithString(fixed);
-      } catch (_) {
-        // still fails — fall through to format conversion
-      }
+      try { profile = await base.saveFileWithString(_fixYamlColonValues(rawText)); }
+      catch (_) {}
     }
 
-    // Step 2b: format conversion (base64 proxy list, single URI, etc.)
+    // 2b: format conversion (base64 proxy list, single URI, etc.)
     if (profile == null) {
-      final String yamlContent;
-      try {
-        yamlContent = convertSubscriptionToClashYaml(rawText);
-      } catch (convertError) {
-        if (isYamlErr) {
-          throw 'Не удалось разобрать подписку.\n'
-              'Ошибка YAML: $firstError\n'
-              'Ошибка конвертации: $convertError';
-        }
-        throw firstError ?? convertError;
+      final String yaml;
+      try { yaml = convertSubscriptionToClashYaml(rawText); }
+      catch (e) {
+        if (isYamlErr) throw 'Ошибка YAML: $firstError\nОшибка конвертации: $e';
+        throw firstError ?? e;
       }
-      try {
-        profile = await base.saveFileWithString(yamlContent);
-      } catch (e) {
-        throw 'Конвертация прошла, но конфиг невалидный: $e\n'
-            'Исходная ошибка: $firstError';
-      }
+      try { profile = await base.saveFileWithString(yaml); }
+      catch (e) { throw 'Конфиг невалидный: $e\nИсходная ошибка: $firstError'; }
     }
   }
 
@@ -131,25 +132,17 @@ Future<void> doProfileImport({
   }
 }
 
-// ── YAML helpers ─────────────────────────────────────────────────────────────
-
+// ─── YAML helpers ─────────────────────────────────────────────────────────────
 bool _looksLikeClashYaml(String s) =>
-    s.contains('proxies:') ||
-    s.contains('proxy-groups:') ||
-    s.contains('mixed-port:') ||
-    (s.contains('port:') && s.contains('mode:'));
+    s.contains('proxies:') || s.contains('proxy-groups:') ||
+    s.contains('mixed-port:') || (s.contains('port:') && s.contains('mode:'));
 
-/// Quotes unquoted YAML string values that contain ": " (the main cause of
-/// "mapping values are not allowed in this context" errors from Go yaml.v3).
-String _fixYamlColonValues(String yaml) {
-  return yaml.split('\n').map(_fixYamlLine).join('\n');
-}
+String _fixYamlColonValues(String yaml) =>
+    yaml.split('\n').map(_fixYamlLine).join('\n');
 
 String _fixYamlLine(String line) {
   final stripped = line.trimLeft();
-  if (stripped.isEmpty || stripped.startsWith('#') || stripped.startsWith('---')) {
-    return line;
-  }
+  if (stripped.isEmpty || stripped.startsWith('#') || stripped.startsWith('---')) return line;
   final m = RegExp(r'^(\s*(?:-\s+)?)(\w[\w\-_.]*)(\s*:\s+)(.+)$').firstMatch(line);
   if (m == null) return line;
   final prefix = m.group(1)!;
@@ -157,19 +150,16 @@ String _fixYamlLine(String line) {
   final sep    = m.group(3)!;
   final value  = m.group(4)!.trimRight();
   if (!_needsYamlQuoting(value)) return line;
-  // Escape backslashes then double-quotes for YAML double-quoted string
   final escaped = value.replaceAll(r'\', r'\\').replaceAll('"', r'\"');
   return '$prefix$key$sep"$escaped"';
 }
 
-
 bool _needsYamlQuoting(String v) {
-  if (v.length >= 2) {
-    if ((v.startsWith('"') && v.endsWith('"')) ||
-        (v.startsWith("'") && v.endsWith("\'"))) return false;
-  }
+  if (v.length >= 2 &&
+      ((v.startsWith('"') && v.endsWith('"')) ||
+       (v.startsWith("'") && v.endsWith("'")))) return false;
   if (RegExp(r'^\d+$').hasMatch(v)) return false;
-  if (const {'true', 'false', 'null', '~', '|', '>', '|-', '>-'}.contains(v)) return false;
+  if (const {'true','false','null','~','|','>','|-','>-'}.contains(v)) return false;
   return v.contains(': ') || v.endsWith(':');
 }
 
@@ -190,18 +180,14 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
   @override
   void initState() {
     super.initState();
-    _pulse = AnimationController(
-        vsync: this, duration: const Duration(milliseconds: 2000))
+    _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))
       ..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.0, end: 8.0)
+    _pulseAnim = Tween<double>(begin: 0.0, end: 10.0)
         .animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut));
   }
 
   @override
-  void dispose() {
-    _pulse.dispose();
-    super.dispose();
-  }
+  void dispose() { _pulse.dispose(); super.dispose(); }
 
   Future<void> _toggle(bool isOn) async {
     try {
@@ -214,64 +200,93 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
 
   String _fmt(int? s) {
     if (s == null) return 'Отключено';
-    if (s < 60) return 'Подключено · ${s}с';
+    if (s < 60)   return 'Подключено · ${s}с';
     if (s < 3600) return 'Подключено · ${s ~/ 60}м ${s % 60}с';
     return 'Подключено · ${s ~/ 3600}ч ${(s % 3600) ~/ 60}м';
   }
 
-  void _snack(String msg,
-      {bool error = false, Duration dur = const Duration(seconds: 4)}) {
+  void _snack(String msg, {bool error = false,
+      Duration dur = const Duration(seconds: 4)}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
-      backgroundColor: error ? _red : _greenDk,
+      backgroundColor: error ? _orange : _lime,
       duration: dur,
     ));
   }
 
   @override
   Widget build(BuildContext context) {
-    final isOn    = ref.watch(runTimeProvider.select((t) => t != null));
-    final runTime = ref.watch(runTimeProvider);
-    final colors  = isOn ? [_greenDk, _green] : [_red, _redLt];
-    final glow    = (isOn ? _green : _red).withOpacity(0.28);
+    final isOn     = ref.watch(runTimeProvider.select((t) => t != null));
+    final runTime  = ref.watch(runTimeProvider);
+    final isReady  = ref.watch(initProvider);
+
+    final activeColor  = isOn ? _lime    : _slate;
+    final btnGrad      = isOn ? [_limeDk, _lime] : [_violet, _violetLt];
+    final glowColor    = isOn
+        ? _lime.withOpacity(0.30)
+        : _violet.withOpacity(0.20);
+    final bgCol        = context.bg;
+    final textPri      = context.textPri;
+    final textSec      = context.textSec;
+    final textTer      = context.textTer;
 
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: bgCol,
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 28),
           child: Column(children: [
-            const SizedBox(height: 52),
-            Icon(isOn ? Icons.shield : Icons.shield_outlined,
-                size: 72, color: isOn ? _green : _textTer),
-            const SizedBox(height: 16),
-            const Text('FlClashR',
+            const SizedBox(height: 48),
+
+            // ── Logo / icon ────────────────────────────────────────────────
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 400),
+              child: Icon(
+                key: ValueKey(isOn),
+                isOn ? Icons.shield_rounded : Icons.shield_outlined,
+                size: 68,
+                color: isOn ? _lime : _slate,
+              ),
+            ),
+            const SizedBox(height: 14),
+            Text('FlClashR',
                 style: TextStyle(
-                    fontSize: 44,
-                    fontWeight: FontWeight.w900,
-                    color: _textPri,
-                    letterSpacing: -1)),
+                    fontSize: 42, fontWeight: FontWeight.w900,
+                    color: textPri, letterSpacing: -1)),
+            const SizedBox(height: 6),
+            // Init indicator
+            AnimatedOpacity(
+              opacity: isReady ? 0 : 1,
+              duration: const Duration(milliseconds: 600),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                SizedBox(width: 12, height: 12,
+                    child: CircularProgressIndicator(strokeWidth: 2,
+                        color: _sky.withOpacity(0.8))),
+                const SizedBox(width: 8),
+                Text('Инициализация…',
+                    style: TextStyle(fontSize: 12, color: _sky.withOpacity(0.8))),
+              ]),
+            ),
+
             const Spacer(),
 
-            // ── Big toggle ──────────────────────────────────────────────────
+            // ── Big toggle button ──────────────────────────────────────────
             AnimatedBuilder(
               animation: _pulseAnim,
               builder: (_, child) => Container(
-                width: double.infinity,
-                height: 84,
+                width: double.infinity, height: 86,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(26),
-                  gradient: LinearGradient(colors: colors),
-                  boxShadow: [
-                    BoxShadow(
-                      color: glow,
-                      blurRadius:
-                          isOn ? 16 + _pulseAnim.value : 10,
-                      spreadRadius:
-                          isOn ? _pulseAnim.value * 0.5 : 0,
-                    )
-                  ],
+                  gradient: LinearGradient(
+                    colors: isReady ? btnGrad : [_slate, _slate.withOpacity(0.7)],
+                    begin: Alignment.topLeft, end: Alignment.bottomRight,
+                  ),
+                  boxShadow: isReady && isOn ? [BoxShadow(
+                    color: glowColor,
+                    blurRadius: 18 + _pulseAnim.value,
+                    spreadRadius: _pulseAnim.value * 0.4,
+                  )] : [],
                 ),
                 child: child,
               ),
@@ -279,43 +294,48 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
                 color: Colors.transparent,
                 child: InkWell(
                   borderRadius: BorderRadius.circular(26),
-                  onTap: () => _toggle(isOn),
-                  child: Center(
-                    child: Text(
-                      isOn ? 'Отключить' : 'Включить',
-                      style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: _textPri),
-                    ),
-                  ),
+                  onTap: isReady ? () => _toggle(isOn) : null,
+                  child: Center(child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: isReady
+                        ? Text(
+                            key: ValueKey(isOn),
+                            isOn ? 'Отключить' : 'Включить',
+                            style: const TextStyle(
+                                fontSize: 24, fontWeight: FontWeight.bold,
+                                color: Colors.white),
+                          )
+                        : Text('Подождите…',
+                            style: TextStyle(fontSize: 18,
+                                color: Colors.white.withOpacity(0.6))),
+                  )),
                 ),
               ),
             ),
             const SizedBox(height: 10),
-            Text(_fmt(runTime),
-                style: TextStyle(
-                    color: isOn ? _green : _textTer,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 13)),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 400),
+              style: TextStyle(
+                  color: isOn ? _lime : textTer,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13),
+              child: Text(_fmt(runTime)),
+            ),
+
             const Spacer(),
 
-            // ── Bottom buttons ───────────────────────────────────────────────
-            _RowBtn(
-                icon: Icons.tune_rounded,
-                label: 'Режимы',
+            // ── Action buttons ─────────────────────────────────────────────
+            _RowBtn(icon: Icons.tune_rounded, label: 'Режимы',
                 onTap: () => _showModes(context)),
             const SizedBox(height: 10),
-            _RowBtn(
-                icon: Icons.settings_rounded,
-                label: 'Настройки',
+            _RowBtn(icon: Icons.settings_rounded, label: 'Настройки',
                 onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (_) => const SettingsView()))),
+                    MaterialPageRoute(builder: (_) => const SettingsView()))),
+
             const SizedBox(height: 28),
-            const Text('from pavel with love ♥',
-                style: TextStyle(fontSize: 11, color: _textTer)),
-            const SizedBox(height: 12),
+            Text('from pavel with love ♥',
+                style: TextStyle(fontSize: 11, color: textTer)),
+            const SizedBox(height: 14),
           ]),
         ),
       ),
@@ -325,65 +345,44 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
   void _showModes(BuildContext ctx) {
     showModalBottomSheet<void>(
       context: ctx,
-      backgroundColor: _surface,
+      backgroundColor: ctx.surf,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (c) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('Режимы',
-                  style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: _textPri)),
-              const SizedBox(height: 4),
-              const Text('Готовый набор правил маршрутизации',
-                  style: TextStyle(fontSize: 13, color: _textSec)),
-              const SizedBox(height: 20),
-              _SheetTile(
-                icon: Icons.flag_rounded,
-                color: _red,
-                title: 'Россия 2026',
-                subtitle: 'YouTube, Telegram — VPN. Банки — напрямую.',
-                onTap: () {
-                  applyRussia2026Preset(ref);
-                  Navigator.of(c).pop();
-                  _snack('Пресет «Россия 2026» применён');
-                },
-              ),
-              const SizedBox(height: 10),
-              _SheetTile(
-                icon: Icons.add_link_rounded,
-                color: _green,
-                title: 'Импорт подписки',
-                subtitle: 'Вставить ссылку на прокси-ключ',
-                onTap: () {
-                  Navigator.of(c).pop();
-                  _showImport(ctx);
-                },
-              ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
-      ),
+      builder: (c) => SafeArea(child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+        child: Column(mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('Режимы', style: TextStyle(fontSize: 22,
+              fontWeight: FontWeight.w800, color: c.textPri)),
+          const SizedBox(height: 4),
+          Text('Готовый набор правил маршрутизации',
+              style: TextStyle(fontSize: 13, color: c.textSec)),
+          const SizedBox(height: 20),
+          _SheetTile(icon: Icons.flag_rounded, color: _violet,
+              title: 'Россия 2026',
+              subtitle: 'YouTube, Telegram — VPN. Банки — напрямую.',
+              onTap: () {
+                applyRussia2026Preset(ref);
+                Navigator.of(c).pop();
+                _snack('Пресет «Россия 2026» применён');
+              }),
+          const SizedBox(height: 10),
+          _SheetTile(icon: Icons.add_link_rounded, color: _sky,
+              title: 'Импорт подписки',
+              subtitle: 'Вставить ссылку на прокси-ключ',
+              onTap: () { Navigator.of(c).pop(); _showImport(ctx); }),
+          const SizedBox(height: 8),
+        ]),
+      )),
     );
   }
 
   void _showImport(BuildContext ctx) {
-    showDialog<void>(
-      context: ctx,
-      builder: (d) => ImportDialog(
-        onImport: (url) async {
+    showDialog<void>(context: ctx,
+        builder: (d) => ImportDialog(onImport: (url) async {
           Navigator.of(d).pop();
           await _runImport(ctx, url);
-        },
-      ),
-    );
+        }));
   }
 
   Future<void> _runImport(BuildContext ctx, String url) async {
@@ -427,7 +426,7 @@ class _SettingsState extends ConsumerState<SettingsView> {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg),
-      backgroundColor: error ? _red : _greenDk,
+      backgroundColor: error ? _orange : _lime,
     ));
   }
 
@@ -437,148 +436,116 @@ class _SettingsState extends ConsumerState<SettingsView> {
     final currentId = ref.watch(currentProfileIdProvider);
     final current   = profiles.getProfile(currentId);
     final isReady   = ref.watch(initProvider);
+    final textPri   = context.textPri;
+    final bgCol     = context.bg;
 
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: bgCol,
       appBar: AppBar(
-        backgroundColor: _bg,
-        foregroundColor: _textPri,
-        elevation: 0,
-        title: const Text('Настройки',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
+        backgroundColor: bgCol, foregroundColor: textPri, elevation: 0,
+        title: Text('Настройки',
+            style: TextStyle(fontWeight: FontWeight.bold,
+                fontSize: 20, color: textPri)),
       ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 8, 20, 40),
-        children: [
+      body: ListView(padding: const EdgeInsets.fromLTRB(20, 8, 20, 40), children: [
 
-          // ── Init banner ────────────────────────────────────────────────────
-          if (!isReady)
-            Container(
-              margin: const EdgeInsets.only(bottom: 16),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1A1200),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.amber.withOpacity(0.4)),
-              ),
-              child: const Row(children: [
-                SizedBox(
-                    width: 16,
-                    height: 16,
-                    child: CircularProgressIndicator(
-                        strokeWidth: 2, color: Colors.amber)),
-                SizedBox(width: 12),
-                Expanded(
-                    child: Text(
-                  'Ядро VPN инициализируется. Подождите перед добавлением подписки.',
-                  style: TextStyle(color: Colors.amber, fontSize: 13),
-                )),
-              ]),
+        // ── Init banner ────────────────────────────────────────────────────
+        if (!isReady)
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: _sky.withOpacity(0.12),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _sky.withOpacity(0.35)),
             ),
-
-          // ── Subscription ───────────────────────────────────────────────────
-          const _SectionHdr('Подписка'),
-          _Card(
-            child: Column(children: [
-              if (current != null) ...[
-                _InfoRow(label: 'Активная', value: current.label ?? current.id),
-                const _Div(),
-              ],
-              _Tile(
-                icon: Icons.add_link_rounded,
-                label: 'Добавить подписку',
-                sublabel: isReady ? null : 'Ожидание инициализации…',
-                onTap: isReady ? () => _showImport(context) : null,
-              ),
-              if (current != null) ...[
-                const _Div(),
-                _Tile(
-                  icon: Icons.refresh_rounded,
-                  label: 'Обновить подписку',
-                  onTap: isReady
-                      ? () => _updateCurrent(context, current)
-                      : null,
-                ),
-              ],
-              if (profiles.isNotEmpty) ...[
-                const _Div(),
-                _Tile(
-                  icon: Icons.list_rounded,
-                  label: 'Все подписки (${profiles.length})',
-                  trailing: const Icon(Icons.chevron_right_rounded,
-                      color: _textTer, size: 20),
-                  onTap: () =>
-                      _showProfileList(context, profiles, currentId),
-                ),
-              ],
+            child: Row(children: [
+              SizedBox(width: 16, height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: _sky)),
+              const SizedBox(width: 12),
+              Expanded(child: Text(
+                'Ядро VPN инициализируется. Кнопка «Включить» станет активна автоматически.',
+                style: TextStyle(color: _sky, fontSize: 13),
+              )),
             ]),
           ),
-          const SizedBox(height: 20),
 
-          // ── VPN ────────────────────────────────────────────────────────────
-          const _SectionHdr('VPN'),
-          _Card(
-            child: _Tile(
-              icon: Icons.flag_rounded,
-              label: 'Пресет «Россия 2026»',
-              onTap: () {
-                applyRussia2026Preset(ref);
-                _snack('Пресет применён');
-              },
-            ),
-          ),
-          const SizedBox(height: 20),
+        // ── Subscription ───────────────────────────────────────────────────
+        _SectionHdr('Подписка', context),
+        _Card(context: context, child: Column(children: [
+          if (current != null) ...[
+            _InfoRow(label: 'Активная', value: current.label ?? current.id, context: context),
+            _Div(context),
+          ],
+          _Tile(icon: Icons.add_link_rounded, label: 'Добавить подписку',
+              sublabel: isReady ? null : 'Ожидание инициализации…',
+              onTap: isReady ? () => _showImport(context) : null,
+              context: context),
+          if (current != null) ...[
+            _Div(context),
+            _Tile(icon: Icons.refresh_rounded, label: 'Обновить подписку',
+                onTap: isReady ? () => _updateCurrent(context, current) : null,
+                context: context),
+          ],
+          if (profiles.isNotEmpty) ...[
+            _Div(context),
+            _Tile(icon: Icons.list_rounded,
+                label: 'Все подписки (${profiles.length})',
+                trailing: Icon(Icons.chevron_right_rounded,
+                    color: context.textTer, size: 20),
+                onTap: () => _showProfileList(context, profiles, currentId),
+                context: context),
+          ],
+        ])),
+        const SizedBox(height: 20),
 
-          // ── Diagnostics ────────────────────────────────────────────────────
-          const _SectionHdr('Диагностика'),
-          _Card(
-            child: Column(children: [
-              _Tile(
-                icon: Icons.bug_report_outlined,
-                label: 'Просмотр лога',
-                trailing: const Icon(Icons.chevron_right_rounded,
-                    color: _textTer, size: 20),
-                onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const LogView())),
-              ),
-              const _Div(),
-              _Tile(
-                icon: Icons.delete_outline_rounded,
-                label: 'Очистить лог',
-                labelColor: _red,
-                onTap: () async {
-                  await CrashLogger.instance.clearLogs();
-                  _snack('Лог очищен');
-                },
-              ),
-            ]),
-          ),
-          const SizedBox(height: 20),
+        // ── VPN ────────────────────────────────────────────────────────────
+        _SectionHdr('VPN', context),
+        _Card(context: context, child: _Tile(
+          icon: Icons.flag_rounded, label: 'Пресет «Россия 2026»',
+          context: context,
+          onTap: () {
+            applyRussia2026Preset(ref);
+            _snack('Пресет применён');
+          },
+        )),
+        const SizedBox(height: 20),
 
-          // ── About ──────────────────────────────────────────────────────────
-          const _SectionHdr('О приложении'),
-          _Card(
-            child: Column(children: [
-              _InfoRow(label: 'Приложение', value: 'FlClashR'),
-              const _Div(),
-              _InfoRow(label: 'Версия', value: _version),
-            ]),
-          ),
-        ],
-      ),
+        // ── Diagnostics ─────────────────────────────────────────────────────
+        _SectionHdr('Диагностика', context),
+        _Card(context: context, child: Column(children: [
+          _Tile(icon: Icons.bug_report_outlined, label: 'Просмотр лога',
+              trailing: Icon(Icons.chevron_right_rounded,
+                  color: context.textTer, size: 20),
+              context: context,
+              onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const LogView()))),
+          _Div(context),
+          _Tile(icon: Icons.delete_outline_rounded, label: 'Очистить лог',
+              labelColor: _orange, context: context, onTap: () async {
+                await CrashLogger.instance.clearLogs();
+                _snack('Лог очищен');
+              }),
+        ])),
+        const SizedBox(height: 20),
+
+        // ── About ────────────────────────────────────────────────────────────
+        _SectionHdr('О приложении', context),
+        _Card(context: context, child: Column(children: [
+          _InfoRow(label: 'Приложение', value: 'FlClashR', context: context),
+          _Div(context),
+          _InfoRow(label: 'Версия', value: _version, context: context),
+        ])),
+      ]),
     );
   }
 
   void _showImport(BuildContext ctx) {
-    showDialog<void>(
-      context: ctx,
-      builder: (d) => ImportDialog(
-        onImport: (url) async {
+    showDialog<void>(context: ctx,
+        builder: (d) => ImportDialog(onImport: (url) async {
           Navigator.of(d).pop();
           await _runImport(ctx, url);
-        },
-      ),
-    );
+        }));
   }
 
   Future<void> _runImport(BuildContext ctx, String url) async {
@@ -605,12 +572,9 @@ class _SettingsState extends ConsumerState<SettingsView> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final updated = await p
-          .update(
-              shouldSendHeaders:
-                  prefs.getBool('sendDeviceHeaders') ?? true)
+          .update(shouldSendHeaders: prefs.getBool('sendDeviceHeaders') ?? true)
           .timeout(const Duration(seconds: 60),
-              onTimeout: () =>
-                  throw 'Превышено время ожидания');
+              onTimeout: () => throw 'Превышено время ожидания');
       ref.read(profilesProvider.notifier).setProfile(updated);
       globalState.appController.applyProfileDebounce(silence: true);
       ctrl.close();
@@ -622,75 +586,56 @@ class _SettingsState extends ConsumerState<SettingsView> {
     }
   }
 
-  void _showProfileList(
-      BuildContext ctx, List<Profile> list, String? cid) {
+  void _showProfileList(BuildContext ctx, List<Profile> list, String? cid) {
     showModalBottomSheet<void>(
       context: ctx,
-      backgroundColor: _surface,
+      backgroundColor: ctx.surf,
       shape: const RoundedRectangleBorder(
           borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (c) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text('Подписки',
-                  style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: _textPri)),
-              const SizedBox(height: 16),
-              ...list.map((p) {
-                final active = p.id == cid;
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(
-                      active
-                          ? Icons.radio_button_checked
-                          : Icons.radio_button_unchecked,
-                      color: active ? _green : _textTer),
-                  title: Text(p.label ?? p.id,
-                      style: TextStyle(
-                          color: active ? _green : _textPri,
-                          fontWeight: active
-                              ? FontWeight.bold
-                              : FontWeight.normal)),
-                  subtitle: p.url.isNotEmpty
-                      ? Text(p.url,
-                          style: const TextStyle(
-                              color: _textTer, fontSize: 11),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis)
-                      : null,
-                  trailing: IconButton(
-                    icon: const Icon(Icons.delete_outline,
-                        color: _textTer, size: 20),
-                    onPressed: () {
-                      Navigator.of(c).pop();
-                      globalState.appController.deleteProfile(p.id);
-                    },
-                  ),
-                  onTap: () {
-                    ref.read(currentProfileIdProvider.notifier).value =
-                        p.id;
-                    globalState.appController
-                        .applyProfileDebounce(silence: true);
-                    Navigator.of(c).pop();
-                  },
-                );
-              }),
-            ],
-          ),
-        ),
-      ),
+      builder: (c) => SafeArea(child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 20, 20, 16),
+        child: Column(mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch, children: [
+          Text('Подписки', style: TextStyle(fontSize: 20,
+              fontWeight: FontWeight.w800, color: c.textPri)),
+          const SizedBox(height: 16),
+          ...list.map((p) {
+            final active = p.id == cid;
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(active
+                  ? Icons.radio_button_checked
+                  : Icons.radio_button_unchecked,
+                  color: active ? _violet : c.textTer),
+              title: Text(p.label ?? p.id, style: TextStyle(
+                  color: active ? _violet : c.textPri,
+                  fontWeight: active ? FontWeight.bold : FontWeight.normal)),
+              subtitle: p.url.isNotEmpty
+                  ? Text(p.url, style: TextStyle(color: c.textTer, fontSize: 11),
+                      maxLines: 1, overflow: TextOverflow.ellipsis)
+                  : null,
+              trailing: IconButton(
+                icon: Icon(Icons.delete_outline, color: c.textTer, size: 20),
+                onPressed: () {
+                  Navigator.of(c).pop();
+                  globalState.appController.deleteProfile(p.id);
+                },
+              ),
+              onTap: () {
+                ref.read(currentProfileIdProvider.notifier).value = p.id;
+                globalState.appController.applyProfileDebounce(silence: true);
+                Navigator.of(c).pop();
+              },
+            );
+          }),
+        ]),
+      )),
     );
   }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Log viewer — full screen with copy button
+// Log viewer
 // ─────────────────────────────────────────────────────────────────────────────
 class LogView extends StatefulWidget {
   const LogView({super.key});
@@ -704,25 +649,17 @@ class _LogViewState extends State<LogView> {
   final  _scroll = ScrollController();
 
   @override
-  void initState() {
-    super.initState();
-    _load();
-  }
+  void initState() { super.initState(); _load(); }
 
   @override
-  void dispose() {
-    _scroll.dispose();
-    super.dispose();
-  }
+  void dispose() { _scroll.dispose(); super.dispose(); }
 
   Future<void> _load() async {
     final text = await CrashLogger.instance.readLogs();
     if (!mounted) return;
     setState(() => _log = text.isEmpty ? 'Лог пуст.' : text);
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scroll.hasClients) {
-        _scroll.jumpTo(_scroll.position.maxScrollExtent);
-      }
+      if (_scroll.hasClients) _scroll.jumpTo(_scroll.position.maxScrollExtent);
     });
   }
 
@@ -737,104 +674,71 @@ class _LogViewState extends State<LogView> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: _bg,
+    backgroundColor: context.bg,
     appBar: AppBar(
-      backgroundColor: _bg,
-      foregroundColor: _textPri,
-      elevation: 0,
-      title: const Text('Лог ошибок',
-          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+      backgroundColor: context.bg, foregroundColor: context.textPri, elevation: 0,
+      title: Text('Лог ошибок',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18,
+              color: context.textPri)),
       actions: [
+        IconButton(icon: const Icon(Icons.refresh_rounded),
+            tooltip: 'Обновить', onPressed: _load),
         IconButton(
-          icon: const Icon(Icons.refresh_rounded),
-          tooltip: 'Обновить',
-          onPressed: _load,
-        ),
+            icon: Icon(_copied ? Icons.check_rounded : Icons.copy_rounded,
+                color: _copied ? _lime : context.textPri),
+            tooltip: 'Скопировать',
+            onPressed: _copy),
         IconButton(
-          icon: Icon(
-            _copied ? Icons.check_rounded : Icons.copy_rounded,
-            color: _copied ? _green : _textPri,
-          ),
-          tooltip: 'Скопировать всё',
-          onPressed: _copy,
-        ),
-        IconButton(
-          icon: const Icon(Icons.delete_outline_rounded, color: _red),
-          tooltip: 'Очистить',
-          onPressed: () async {
-            final ok = await showDialog<bool>(
-              context: context,
-              builder: (d) => AlertDialog(
-                backgroundColor: _surface,
-                title: const Text('Очистить лог?',
-                    style: TextStyle(color: _textPri)),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.of(d).pop(false),
-                    child: const Text('Отмена',
-                        style: TextStyle(color: _textSec)),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.of(d).pop(true),
-                    child: const Text('Очистить',
-                        style: TextStyle(color: _red)),
-                  ),
-                ],
-              ),
-            );
-            if (ok == true) {
-              await CrashLogger.instance.clearLogs();
-              await _load();
-            }
-          },
-        ),
+            icon: Icon(Icons.delete_outline_rounded, color: _orange),
+            tooltip: 'Очистить',
+            onPressed: () async {
+              final ok = await showDialog<bool>(context: context,
+                  builder: (d) => AlertDialog(
+                    backgroundColor: context.surf,
+                    title: Text('Очистить лог?',
+                        style: TextStyle(color: context.textPri)),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.of(d).pop(false),
+                          child: Text('Отмена',
+                              style: TextStyle(color: context.textSec))),
+                      TextButton(onPressed: () => Navigator.of(d).pop(true),
+                          child: Text('Очистить',
+                              style: TextStyle(color: _orange))),
+                    ],
+                  ));
+              if (ok == true) { await CrashLogger.instance.clearLogs(); await _load(); }
+            }),
         const SizedBox(width: 4),
       ],
     ),
     body: Column(children: [
-      // ── Hint banner ────────────────────────────────────────────────────────
       Container(
         width: double.infinity,
-        padding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        color: _surfaceHi,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        color: context.surfHi,
         child: Row(children: [
-          const Icon(Icons.info_outline_rounded,
-              size: 16, color: _blue),
+          Icon(Icons.info_outline_rounded, size: 16, color: _sky),
           const SizedBox(width: 8),
-          const Expanded(
-            child: Text(
-              'Нажмите кнопку копирования ↗ и отправьте лог в чат с Claude',
-              style: TextStyle(fontSize: 12, color: _textSec),
-            ),
-          ),
+          Expanded(child: Text(
+            'Нажмите кнопку копирования ↗ и отправьте лог в чат с Claude',
+            style: TextStyle(fontSize: 12, color: context.textSec),
+          )),
           if (_copied)
-            const Text('Скопировано!',
-                style: TextStyle(
-                    fontSize: 12,
-                    color: _green,
+            Text('Скопировано!',
+                style: TextStyle(fontSize: 12, color: _lime,
                     fontWeight: FontWeight.bold)),
         ]),
       ),
-      // ── Log text ───────────────────────────────────────────────────────────
-      Expanded(
-        child: Scrollbar(
+      Expanded(child: Scrollbar(
+        controller: _scroll,
+        child: SingleChildScrollView(
           controller: _scroll,
-          child: SingleChildScrollView(
-            controller: _scroll,
-            padding: const EdgeInsets.all(14),
-            child: SelectableText(
-              _log,
-              style: const TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 11,
-                color: _textSec,
-                height: 1.5,
-              ),
-            ),
-          ),
+          padding: const EdgeInsets.all(14),
+          child: SelectableText(_log,
+              style: TextStyle(fontFamily: 'monospace', fontSize: 11,
+                  color: context.textSec, height: 1.5)),
         ),
-      ),
+      )),
     ]),
   );
 }
@@ -854,49 +758,34 @@ class _ImportDialogState extends State<ImportDialog> {
   bool _busy  = false;
 
   @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _ctrl.dispose(); super.dispose(); }
 
   Future<void> _submit() async {
     final url = _ctrl.text.trim();
     if (url.isEmpty) return;
     setState(() => _busy = true);
-    try {
-      await widget.onImport(url);
-    } finally {
-      if (mounted) setState(() => _busy = false);
-    }
+    try { await widget.onImport(url); }
+    finally { if (mounted) setState(() => _busy = false); }
   }
 
   @override
   Widget build(BuildContext context) => AlertDialog(
-    backgroundColor: _surface,
-    shape:
-        RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-    title: const Text('Импорт подписки',
-        style:
-            TextStyle(color: _textPri, fontWeight: FontWeight.bold)),
+    backgroundColor: context.surf,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+    title: Text('Импорт подписки',
+        style: TextStyle(color: context.textPri, fontWeight: FontWeight.bold)),
     content: Column(mainAxisSize: MainAxisSize.min, children: [
-      const Text(
-        'Вставьте ссылку (vmess://, vless://, ss://, https://…)',
-        style: TextStyle(color: _textSec, fontSize: 13),
-      ),
+      Text('Вставьте ссылку (vmess://, vless://, ss://, https://…)',
+          style: TextStyle(color: context.textSec, fontSize: 13)),
       const SizedBox(height: 14),
       TextField(
-        controller: _ctrl,
-        autofocus: true,
-        enabled: !_busy,
-        style: const TextStyle(color: _textPri, fontSize: 14),
-        maxLines: 3,
-        minLines: 1,
+        controller: _ctrl, autofocus: true, enabled: !_busy,
+        style: TextStyle(color: context.textPri, fontSize: 14),
+        maxLines: 3, minLines: 1,
         decoration: InputDecoration(
           hintText: 'https://example.com/sub?token=…',
-          hintStyle:
-              const TextStyle(color: _textTer, fontSize: 13),
-          filled: true,
-          fillColor: _surfaceHi,
+          hintStyle: TextStyle(color: context.textTer, fontSize: 13),
+          filled: true, fillColor: context.surfHi,
           border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide.none),
@@ -906,65 +795,59 @@ class _ImportDialogState extends State<ImportDialog> {
     ]),
     actions: [
       TextButton(
-        onPressed:
-            _busy ? null : () => Navigator.of(context).pop(),
-        child: const Text('Отмена',
-            style: TextStyle(color: _textSec)),
-      ),
+          onPressed: _busy ? null : () => Navigator.of(context).pop(),
+          child: Text('Отмена', style: TextStyle(color: context.textSec))),
       FilledButton(
-        onPressed: _busy ? null : _submit,
-        style:
-            FilledButton.styleFrom(backgroundColor: _green),
-        child: _busy
-            ? const SizedBox(
-                width: 18,
-                height: 18,
-                child: CircularProgressIndicator(
-                    strokeWidth: 2, color: Colors.black))
-            : const Text('Добавить',
-                style: TextStyle(
-                    color: Colors.black,
-                    fontWeight: FontWeight.bold)),
-      ),
+          onPressed: _busy ? null : _submit,
+          style: FilledButton.styleFrom(backgroundColor: _violet),
+          child: _busy
+              ? const SizedBox(width: 18, height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+              : const Text('Добавить',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
     ],
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Atoms
+// Design atoms — all adaptive
 // ─────────────────────────────────────────────────────────────────────────────
 class _SectionHdr extends StatelessWidget {
   final String text;
-  const _SectionHdr(this.text);
+  final BuildContext ctx;
+  const _SectionHdr(this.text, this.ctx);
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(left: 4, bottom: 8, top: 4),
-    child: Text(text.toUpperCase(),
-        style: const TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: _textTer,
-            letterSpacing: 1.2)),
+    child: Text(text.toUpperCase(), style: TextStyle(
+        fontSize: 11, fontWeight: FontWeight.w700,
+        color: ctx.textTer, letterSpacing: 1.4)),
   );
 }
 
 class _Card extends StatelessWidget {
   final Widget child;
-  const _Card({required this.child});
+  final BuildContext context;
+  const _Card({required this.child, required this.context});
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext ctx) => Container(
     decoration: BoxDecoration(
-        color: _surface,
-        borderRadius: BorderRadius.circular(16)),
+        color: context.surf,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: context.isDark ? [] : [
+          BoxShadow(color: Colors.black.withOpacity(0.06),
+              blurRadius: 8, offset: const Offset(0, 2)),
+        ]),
     child: child,
   );
 }
 
 class _Div extends StatelessWidget {
-  const _Div();
+  final BuildContext ctx;
+  const _Div(this.ctx);
   @override
   Widget build(BuildContext context) =>
-      const Divider(height: 1, color: _divider, indent: 52);
+      Divider(height: 1, color: ctx.divider, indent: 52);
 }
 
 class _Tile extends StatelessWidget {
@@ -974,50 +857,35 @@ class _Tile extends StatelessWidget {
   final Color? labelColor;
   final Widget? trailing;
   final VoidCallback? onTap;
-  const _Tile(
-      {required this.icon,
-      required this.label,
-      this.sublabel,
-      this.labelColor,
-      this.trailing,
-      this.onTap});
+  final BuildContext context;
+  const _Tile({required this.icon, required this.label, required this.context,
+      this.sublabel, this.labelColor, this.trailing, this.onTap});
   @override
-  Widget build(BuildContext context) => ListTile(
-    leading: Icon(icon,
-        color: onTap != null ? _textSec : _textTer, size: 22),
-    title: Text(label,
-        style: TextStyle(
-            color: onTap != null
-                ? (labelColor ?? _textPri)
-                : _textTer,
-            fontSize: 15)),
+  Widget build(BuildContext ctx) => ListTile(
+    leading: Icon(icon, color: onTap != null ? _violet : context.textTer, size: 22),
+    title: Text(label, style: TextStyle(
+        color: onTap != null ? (labelColor ?? context.textPri) : context.textTer,
+        fontSize: 15)),
     subtitle: sublabel != null
-        ? Text(sublabel!,
-            style:
-                const TextStyle(color: _textTer, fontSize: 12))
+        ? Text(sublabel!, style: TextStyle(color: context.textTer, fontSize: 12))
         : null,
     trailing: trailing,
     onTap: onTap,
-    shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16)),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
   );
 }
 
 class _InfoRow extends StatelessWidget {
   final String label, value;
-  const _InfoRow({required this.label, required this.value});
+  final BuildContext context;
+  const _InfoRow({required this.label, required this.value, required this.context});
   @override
-  Widget build(BuildContext context) => Padding(
-    padding:
-        const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+  Widget build(BuildContext ctx) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
     child: Row(children: [
-      Text(label,
-          style:
-              const TextStyle(color: _textSec, fontSize: 15)),
+      Text(label, style: TextStyle(color: context.textSec, fontSize: 15)),
       const Spacer(),
-      Text(value,
-          style:
-              const TextStyle(color: _textPri, fontSize: 15)),
+      Text(value, style: TextStyle(color: context.textPri, fontSize: 15)),
     ]),
   );
 }
@@ -1026,32 +894,23 @@ class _RowBtn extends StatelessWidget {
   final IconData icon;
   final String label;
   final VoidCallback onTap;
-  const _RowBtn(
-      {required this.icon,
-      required this.label,
-      required this.onTap});
+  const _RowBtn({required this.icon, required this.label, required this.onTap});
   @override
   Widget build(BuildContext context) => SizedBox(
-    width: double.infinity,
-    height: 60,
+    width: double.infinity, height: 60,
     child: Material(
-      color: _surface,
-      borderRadius: BorderRadius.circular(18),
+      color: context.surf, borderRadius: BorderRadius.circular(18),
       child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
+        borderRadius: BorderRadius.circular(18), onTap: onTap,
         child: Padding(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 22),
+          padding: const EdgeInsets.symmetric(horizontal: 22),
           child: Row(children: [
-            Icon(icon, size: 22, color: _textSec),
+            Icon(icon, size: 22, color: _violet),
             const SizedBox(width: 14),
-            Text(label,
-                style: const TextStyle(
-                    fontSize: 17, color: _textPri)),
+            Text(label, style: TextStyle(fontSize: 17, color: context.textPri,
+                fontWeight: FontWeight.w500)),
             const Spacer(),
-            const Icon(Icons.chevron_right_rounded,
-                color: _textTer, size: 20),
+            Icon(Icons.chevron_right_rounded, color: context.textTer, size: 20),
           ]),
         ),
       ),
@@ -1064,39 +923,25 @@ class _SheetTile extends StatelessWidget {
   final Color color;
   final String title, subtitle;
   final VoidCallback onTap;
-  const _SheetTile(
-      {required this.icon,
-      required this.color,
-      required this.title,
-      required this.subtitle,
-      required this.onTap});
+  const _SheetTile({required this.icon, required this.color,
+      required this.title, required this.subtitle, required this.onTap});
   @override
   Widget build(BuildContext context) => Material(
-    color: _surfaceHi,
-    borderRadius: BorderRadius.circular(14),
+    color: context.surfHi, borderRadius: BorderRadius.circular(14),
     child: InkWell(
-      borderRadius: BorderRadius.circular(14),
-      onTap: onTap,
+      borderRadius: BorderRadius.circular(14), onTap: onTap,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Row(children: [
           Icon(icon, color: color, size: 26),
           const SizedBox(width: 14),
-          Expanded(
-              child: Column(
-                  crossAxisAlignment:
-                      CrossAxisAlignment.start,
-                  children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color: _textPri)),
-                Text(subtitle,
-                    style: const TextStyle(
-                        fontSize: 12, color: _textSec)),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: TextStyle(fontWeight: FontWeight.bold,
+                    color: context.textPri)),
+                Text(subtitle, style: TextStyle(fontSize: 12, color: context.textSec)),
               ])),
-          const Icon(Icons.chevron_right_rounded,
-              color: _textTer, size: 18),
+          Icon(Icons.chevron_right_rounded, color: context.textTer, size: 18),
         ]),
       ),
     ),
@@ -1108,11 +953,8 @@ class _LoadingRow extends StatelessWidget {
   const _LoadingRow(this.text);
   @override
   Widget build(BuildContext context) => Row(children: [
-    const SizedBox(
-        width: 18,
-        height: 18,
-        child: CircularProgressIndicator(
-            strokeWidth: 2, color: Colors.white)),
+    const SizedBox(width: 18, height: 18,
+        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)),
     const SizedBox(width: 12),
     Text(text),
   ]);
