@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
+import 'package:dio/dio.dart';
 import 'package:flclashx/clash/clash.dart';
 import 'package:flclashx/common/common.dart';
 import 'package:flclashx/common/russia_preset.dart';
@@ -7,6 +10,7 @@ import 'package:flclashx/core/crash_logger.dart';
 import 'package:flclashx/models/models.dart';
 import 'package:flclashx/providers/providers.dart';
 import 'package:flclashx/state.dart';
+import 'package:flclashx/views/subscription_converter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,43 +33,144 @@ const _divider   = Color(0xFF2A2A2A);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared import helper
-// Waits for clash core to be ready, then downloads and saves the profile.
+// Supports: Clash YAML, base64-encoded proxy lists, single proxy URIs
 // ─────────────────────────────────────────────────────────────────────────────
 Future<void> doProfileImport({
   required String url,
   required WidgetRef ref,
   required BuildContext context,
 }) async {
-  // Wait for clash core to initialise (max 20 s).
-  // appState.isInit becomes true after controller.init() finishes —
-  // that means the service isolate is connected and validateConfig will work.
   if (!globalState.appState.isInit) {
     bool ready = false;
     for (int i = 0; i < 40; i++) {
       await Future.delayed(const Duration(milliseconds: 500));
-      if (globalState.appState.isInit) {
-        ready = true;
-        break;
-      }
+      if (globalState.appState.isInit) { ready = true; break; }
     }
     if (!ready) {
       throw 'Ядро VPN ещё не готово. Подождите несколько секунд и попробуйте снова.';
     }
   }
 
-  final prefs = await SharedPreferences.getInstance();
-  final profile = await Profile.normal(url: url)
-      .update(shouldSendHeaders: prefs.getBool('sendDeviceHeaders') ?? true)
-      .timeout(
-        const Duration(seconds: 60),
-        onTimeout: () => throw 'Превышено время ожидания (60 с). Проверьте ссылку и интернет.',
-      );
+  final prefs  = await SharedPreferences.getInstance();
+  final sendHd = prefs.getBool('sendDeviceHeaders') ?? true;
+  final base   = Profile.normal(url: url);
+
+  // ── Attempt 1: standard Profile.update() — works for Clash YAML subs ──────
+  Profile? profile;
+  Object? firstError;
+  try {
+    profile = await base
+        .update(shouldSendHeaders: sendHd)
+        .timeout(
+          const Duration(seconds: 60),
+          onTimeout: () => throw 'Превышено время ожидания (60 с). Проверьте ссылку.',
+        );
+  } catch (e) {
+    firstError = e;
+  }
+
+  // ── Attempt 2: download raw + fix/convert ─────────────────────────────────
+  if (profile == null) {
+    Uint8List? rawBytes;
+    try {
+      final response = await request
+          .getFileResponseForUrl(url)
+          .timeout(const Duration(seconds: 30));
+      rawBytes = response.data;
+    } catch (e) {
+      throw firstError ?? e;
+    }
+
+    if (rawBytes == null || rawBytes.isEmpty) {
+      throw firstError ?? 'Сервер вернул пустой ответ.';
+    }
+
+    final rawText = utf8.decode(rawBytes, allowMalformed: true).trim();
+    final origErr = firstError?.toString() ?? '';
+    final isYamlErr = origErr.contains('yaml') ||
+        origErr.contains('mapping') ||
+        origErr.contains('line ');
+
+    // Step 2a: looks like Clash YAML but has unquoted colons in values
+    // (most common cause: proxy names like "DE: Frankfurt" from paid services)
+    if (isYamlErr && _looksLikeClashYaml(rawText)) {
+      final fixed = _fixYamlColonValues(rawText);
+      try {
+        profile = await base.saveFileWithString(fixed);
+      } catch (_) {
+        // still fails — fall through to format conversion
+      }
+    }
+
+    // Step 2b: format conversion (base64 proxy list, single URI, etc.)
+    if (profile == null) {
+      final String yamlContent;
+      try {
+        yamlContent = convertSubscriptionToClashYaml(rawText);
+      } catch (convertError) {
+        if (isYamlErr) {
+          throw 'Не удалось разобрать подписку.\n'
+              'Ошибка YAML: $firstError\n'
+              'Ошибка конвертации: $convertError';
+        }
+        throw firstError ?? convertError;
+      }
+      try {
+        profile = await base.saveFileWithString(yamlContent);
+      } catch (e) {
+        throw 'Конвертация прошла, но конфиг невалидный: $e\n'
+            'Исходная ошибка: $firstError';
+      }
+    }
+  }
 
   ref.read(profilesProvider.notifier).setProfile(profile);
   if (ref.read(currentProfileIdProvider) == null) {
     ref.read(currentProfileIdProvider.notifier).value = profile.id;
     globalState.appController.applyProfileDebounce(silence: true);
   }
+}
+
+// ── YAML helpers ─────────────────────────────────────────────────────────────
+
+bool _looksLikeClashYaml(String s) =>
+    s.contains('proxies:') ||
+    s.contains('proxy-groups:') ||
+    s.contains('mixed-port:') ||
+    (s.contains('port:') && s.contains('mode:'));
+
+/// Quotes unquoted YAML string values that contain ": " (the main cause of
+/// "mapping values are not allowed in this context" errors from Go yaml.v3).
+String _fixYamlColonValues(String yaml) {
+  return yaml.split('\n').map(_fixYamlLine).join('\n');
+}
+
+String _fixYamlLine(String line) {
+  final stripped = line.trimLeft();
+  if (stripped.isEmpty || stripped.startsWith('#') || stripped.startsWith('---')) {
+    return line;
+  }
+  final m = RegExp(r'^(\s*(?:-\s+)?)(\w[\w\-_.]*)(\s*:\s+)(.+)$').firstMatch(line);
+  if (m == null) return line;
+  final prefix = m.group(1)!;
+  final key    = m.group(2)!;
+  final sep    = m.group(3)!;
+  final value  = m.group(4)!.trimRight();
+  if (!_needsYamlQuoting(value)) return line;
+  // Escape backslashes then double-quotes for YAML double-quoted string
+  final escaped = value.replaceAll(r'\', r'\\').replaceAll('"', r'\"');
+  return '$prefix$key$sep"$escaped"';
+}
+
+
+bool _needsYamlQuoting(String v) {
+  if (v.length >= 2) {
+    if ((v.startsWith('"') && v.endsWith('"')) ||
+        (v.startsWith("'") && v.endsWith("\'"))) return false;
+  }
+  if (RegExp(r'^\d+$').hasMatch(v)) return false;
+  if (const {'true', 'false', 'null', '~', '|', '>', '|-', '>-'}.contains(v)) return false;
+  return v.contains(': ') || v.endsWith(':');
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
