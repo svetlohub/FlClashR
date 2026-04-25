@@ -105,6 +105,12 @@ func handleStartTun(fd int, callback unsafe.Pointer) {
 	now := time.Now()
 	runTime = &now
 	if fd != 0 {
+		// Guard: currentConfig must be loaded via applyProfile before TUN starts.
+		// Without this check, a nil dereference causes SIGSEGV → crash loop.
+		if currentConfig == nil {
+			log.Errorln("[TUN] currentConfig is nil, aborting startTun")
+			return
+		}
 		tunHandler = &TunHandler{
 			callback: callback,
 			limit:    semaphore.NewWeighted(4),
