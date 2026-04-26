@@ -159,6 +159,10 @@ func removeTunHook() {
 func handleGetAndroidVpnOptions() string {
 	tunLock.Lock()
 	defer tunLock.Unlock()
+	if currentConfig == nil {
+		log.Errorln("[VPN] currentConfig is nil in handleGetAndroidVpnOptions, returning defaults")
+		return "{}"
+	}
 	options := state.AndroidVpnOptions{
 		Enable:           state.CurrentState.VpnProps.Enable,
 		Port:             currentConfig.General.MixedPort,
