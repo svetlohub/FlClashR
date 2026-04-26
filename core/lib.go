@@ -14,9 +14,18 @@ import (
 
 var messagePort int64 = -1
 
+var dartApiInitialized bool
+
 //export initNativeApiBridge
 func initNativeApiBridge(api unsafe.Pointer) {
+	// Dart_InitializeApiDL must only be called ONCE per process.
+	// The service FlutterEngine also calls this - second call would
+	// overwrite the Dart VM function pointers and corrupt SendToPort.
+	if dartApiInitialized {
+		return
+	}
 	bridge.InitDartApi(api)
+	dartApiInitialized = true
 }
 
 //export attachMessagePort
