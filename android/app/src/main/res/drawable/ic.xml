@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FlClashR notification/tile icon: white letter R -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+  <!--
+    Letter R path: start top-left, go down, across to serif, curve.
+    Simple clean path that renders well at small sizes.
+  -->
+  <path
+      android:fillColor="#FFFFFF"
+      android:pathData="M5,3 L5,21 L8,21 L8,14 L13,14 L17,21 L21,21 L16.5,13.5 C18.5,12.5 19.5,10.8 19.5,9 C19.5,5.7 17,3 13.5,3 Z M8,6 L13,6 C14.7,6 16,7.1 16,9 C16,10.9 14.7,12 13,12 L8,12 Z" />
+</vector>

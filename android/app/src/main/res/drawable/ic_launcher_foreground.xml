@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- FlClashR launcher foreground: white letter R on transparent background -->
+<!-- Background is set separately (gradient via ic_launcher_background) -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- White letter R, centered at ~54,54, sized to fill adaptive icon safe zone -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M30,18 L30,90 L42,90 L42,60 L58,60 L72,90 L86,90 L70,57 C78,53 82,46 82,38 C82,26 73,18 60,18 Z M42,28 L59,28 C66,28 70,32 70,38 C70,44 66,48 59,48 L42,48 Z" />
+</vector>
