@@ -226,7 +226,12 @@ class ClashLibHandler {
   ClashLibHandler._internal() {
     lib = DynamicLibrary.open('libclash.so');
     clashFFI = ClashFFI(lib);
-    clashFFI.initNativeApiBridge(NativeApi.initializeApiDLData);
+    // Do NOT call initNativeApiBridge here.
+    // ClashLibHandler runs in the SERVICE FlutterEngine (second Dart VM in same process).
+    // initNativeApiBridge calls Dart_InitializeApiDL which must only be called once —
+    // calling it again from service engine overwrites Go's Dart VM function pointers
+    // and corrupts SendToPort → SIGSEGV crash loop when VPN starts.
+    // The main engine's _MainFFIHandler already initialised the bridge.
   }
 
   static ClashLibHandler? _instance;
