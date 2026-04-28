@@ -231,13 +231,24 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         GlobalState.runLock.withLock {
             if (GlobalState.runState.value == RunState.START) return
             GlobalState.runState.value = RunState.START
-            val fd = flClashXService?.start(options!!)
-            Core.startTun(
-                fd = fd ?: 0,
-                protect = this::protect,
-                resolverProcess = this::resolverProcess,
-            )
-            startForegroundJob()
+            try {
+                val fd = flClashXService?.start(options!!)
+                android.util.Log.d("VpnPlugin", "VPN fd=$fd options.enable=${options?.enable}")
+                if (fd == null || fd == -1) {
+                    android.util.Log.e("VpnPlugin", "start() returned invalid fd=$fd, aborting TUN setup")
+                    GlobalState.runState.value = RunState.STOP
+                    return@withLock
+                }
+                Core.startTun(
+                    fd = fd,
+                    protect = this::protect,
+                    resolverProcess = this::resolverProcess,
+                )
+                startForegroundJob()
+            } catch (e: Exception) {
+                android.util.Log.e("VpnPlugin", "handleStartService failed: ${e.message}", e)
+                GlobalState.runState.value = RunState.STOP
+            }
         }
     }
 

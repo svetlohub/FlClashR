@@ -1,95 +1,72 @@
-import 'package:flclashx/core/crash_logger.dart';
-import 'dart:async';
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 
+/// Unified logger — writes to flclashr_debug.log alongside Kotlin crash log.
+/// Call log() freely; logError() for exceptions with stack traces.
 class CrashLogger {
   CrashLogger._();
-  static final CrashLogger instance = CrashLogger._();
-
-  static const _logFileName = 'flclashr_debug.log';
-  static const _maxLogSizeBytes = 2 * 1024 * 1024; // 2MB
+  static final instance = CrashLogger._();
 
   File? _logFile;
-  bool _initialized = false;
+  bool _ready = false;
 
   Future<void> init() async {
-    if (_initialized) return;
     try {
       final dir = await getApplicationDocumentsDirectory();
-      _logFile = File('${dir.path}/$_logFileName');
-
-      if (_logFile!.existsSync()) {
-        final size = await _logFile!.length();
-        if (size > _maxLogSizeBytes) {
-          await _logFile!.writeAsString('');
-        }
-      }
-
-      await _write('=== FlClashR CrashLogger started: ${DateTime.now()} ===');
-      await _write('Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}');
-      _initialized = true;
-
-      debugPrint('[CrashLogger] Log file: ${_logFile!.path}');
+      _logFile = File('${dir.path}/flclashr_debug.log');
+      _ready = true;
+      final header =
+          '\n=== FlClashR CrashLogger started: ${DateTime.now()} ===\n'
+          'Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}\n';
+      await _logFile!.writeAsString(header, mode: FileMode.append);
     } catch (e) {
-      debugPrint('[CrashLogger] init failed: $e');
+      _ready = false;
     }
   }
 
   Future<void> log(String message, {String level = 'INFO'}) async {
-    final entry = '[${DateTime.now().toIso8601String()}] [$level] $message';
-    debugPrint(entry);
-    await _write(entry);
-  }
-
-  Future<void> logError(dynamic error, StackTrace? stack, {String context = ''}) async {
-    final msg = StringBuffer();
-    msg.writeln('━━━ ERROR ${context.isNotEmpty ? "[$context]" : ""} ━━━');
-    msg.writeln('Time:  ${DateTime.now().toIso8601String()}');
-    msg.writeln('Error: $error');
-    if (stack != null) {
-      msg.writeln('Stack:');
-      msg.writeln(stack.toString().split('\n').take(30).join('\n'));
-    }
-    msg.writeln('━━━ END ERROR ━━━');
-
-    debugPrint(msg.toString());
-    await _write(msg.toString());
-  }
-
-  Future<void> _write(String content) async {
-    if (_logFile == null) return;
+    if (!_ready) return;
+    final entry = '[${DateTime.now().toIso8601String()}] [$level] $message\n';
     try {
-      await _logFile!.writeAsString(
-        '$content\n',
-        mode: FileMode.append,
-        flush: true,
-      );
+      await _logFile!.writeAsString(entry, mode: FileMode.append);
     } catch (_) {}
   }
 
-  Future<String> getLogPath() async {
-    if (_logFile != null) return _logFile!.path;
-    final dir = await getApplicationDocumentsDirectory();
-    return '${dir.path}/$_logFileName';
+  Future<void> logError(
+    Object error,
+    StackTrace? stack, {
+    String? context,
+  }) async {
+    if (!_ready) return;
+    final buf = StringBuffer();
+    buf.writeln('━━━ ERROR${context != null ? ' [$context]' : ''} ━━━');
+    buf.writeln('Time:  ${DateTime.now().toIso8601String()}');
+    buf.writeln('Error: $error');
+    if (stack != null) {
+      buf.writeln('Stack:');
+      buf.writeln(stack.toString().split('\n').take(20).join('\n'));
+    }
+    buf.writeln('━━━ END ERROR ━━━\n');
+    try {
+      await _logFile!.writeAsString(buf.toString(), mode: FileMode.append);
+    } catch (_) {}
   }
 
   Future<String> readLogs() async {
     try {
-      if (_logFile != null && _logFile!.existsSync()) {
-        return await _logFile!.readAsString();
-      }
-    } catch (e) {
-      return 'Failed to read logs: $e';
+      if (_logFile == null || !await _logFile!.exists()) return '';
+      return await _logFile!.readAsString();
+    } catch (_) {
+      return '';
     }
-    return 'No logs found';
   }
+
+  Future<String> getLogPath() async =>
+      _logFile?.path ?? 'log not initialized';
 
   Future<void> clearLogs() async {
     try {
       await _logFile?.writeAsString('');
-      await log('Logs cleared by user');
     } catch (_) {}
   }
 }

@@ -13,73 +13,77 @@ import 'core/crash_logger.dart';
 import 'plugins/tile.dart';
 import 'state.dart';
 
-// ── Main UI entry point ───────────────────────────────────────────────────────
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
   await CrashLogger.instance.init();
   await CrashLogger.instance.log('App starting...');
 
+  // Catch all Flutter framework errors
   FlutterError.onError = (FlutterErrorDetails details) {
     FlutterError.presentError(details);
-    CrashLogger.instance.logError(details.exception, details.stack,
-        context: 'FlutterError: ${details.context}');
+    CrashLogger.instance.logError(
+      details.exception,
+      details.stack,
+      context: 'FlutterError: ${details.context}',
+    );
   };
 
+  // Catch all platform/native-bridge errors
   PlatformDispatcher.instance.onError = (error, stack) {
-    CrashLogger.instance.logError(error, stack, context: 'PlatformDispatcher');
-    return false;
+    CrashLogger.instance.logError(
+      error,
+      stack,
+      context: 'PlatformDispatcher',
+    );
+    return false; // let default handler also run
   };
 
+  await CrashLogger.instance.log('Calling initApp...');
   await globalState.initApp(0);
+  await CrashLogger.instance.log('initApp done, starting Flutter UI');
 
   runZonedGuarded(
-    () { runApp(const ProviderScope(child: Application())); },
+    () {
+      runApp(const ProviderScope(child: Application()));
+    },
     (error, stack) {
       CrashLogger.instance.logError(error, stack, context: 'runZonedGuarded');
     },
   );
 }
 
-// ── VPN background service entry point ────────────────────────────────────────
-// Called by Kotlin DartExecutor with entrypoint "_service".
-//
-// CRITICAL: Do NOT create ClashLibHandler or call any FFI here when main UI
-// is running. Both engines share the same process and the same libclash.so.
-// Creating a second ClashFFI wrapper causes:
-//   1. Race conditions on Go global state (currentConfig, runLock, etc.)
-//   2. Corruption of Dart_PostCObject port mappings
-// The main engine's _MainFFIHandler handles all clash operations via FFI.
-// The service engine is purely a signal relay for Android VPN/tile lifecycle.
+/// VPN background service entry point — called by Kotlin DartExecutor.
+///
+/// CRITICAL: Do NOT call ClashLibHandler or any FFI here when main UI is
+/// running. Two FlutterEngines share the same process and libclash.so.
+/// Calling initNativeApiBridge from service engine overwrites the Go Dart API
+/// function pointers → SendToPort uses invalid pointers → SIGSEGV.
 @pragma('vm:entry-point')
 void _service() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Suppress unhandled errors in service isolate to prevent process crash
+  // Prevent unhandled exceptions in service engine from crashing the process
   FlutterError.onError = (FlutterErrorDetails details) {
-    debugPrint('[service] FlutterError: ${details.exception}');
+    debugPrint('[_service] FlutterError: ${details.exception}');
   };
   PlatformDispatcher.instance.onError = (error, stack) {
-    debugPrint('[service] Error: $error');
-    return true; // mark as handled - don't crash the process
+    debugPrint('[_service] Error: $error\n$stack');
+    return true; // handled — don't propagate
   };
 
   globalState.isService = true;
   await globalState.initApp(0);
 
-  // Register service port for optional IPC with main engine.
-  // IsolateNameServer doesn't work cross-FlutterEngine (different Dart VMs)
-  // so mainPort will be null here - that's expected and fine.
   final rPort = ReceivePort();
   IsolateNameServer.removePortNameMapping(serviceIsolate);
   IsolateNameServer.registerPortWithName(rPort.sendPort, serviceIsolate);
+  // IsolateNameServer is per-Dart-VM; cross-engine lookup returns null — expected
   final mainPort = IsolateNameServer.lookupPortByName(mainIsolate);
   mainPort?.send(rPort.sendPort);
 
-  // Signal Kotlin that Dart service is ready.
-  // TilePlugin.handleServiceReady() will execute any pending START/STOP action.
   await tile?.signalServiceReady();
 
-  // Keep the isolate alive so the service engine stays running.
-  // If we return here, Kotlin's service engine loses its Dart isolate.
+  // Keep isolate alive — returning here kills the service engine Dart side
   await rPort.first;
 }

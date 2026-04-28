@@ -123,8 +123,14 @@ class FlClashXVpnService : VpnService(), BaseServiceInterface {
                     )
                 )
             }
-            establish()?.detachFd()
-                ?: throw NullPointerException("Establish VPN rejected by system")
+            establish()?.detachFd().also { fd ->
+                if (fd == null) {
+                    android.util.Log.e("FlClashVpnService", "establish() returned null - VPN permission denied or system rejected")
+                }
+            } ?: run {
+                android.util.Log.e("FlClashVpnService", "VPN establish failed, returning -1")
+                return@with -1
+            }
         }
     }
 

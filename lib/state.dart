@@ -5,6 +5,7 @@ import 'dart:ffi' show Pointer;
 import 'package:animations/animations.dart';
 import 'package:dio/dio.dart';
 import 'package:dynamic_color/dynamic_color.dart';
+import 'package:flclashx/core/crash_logger.dart';
 import 'package:flclashx/clash/clash.dart';
 import 'package:flclashx/common/theme.dart';
 import 'package:flclashx/enum/enum.dart';
@@ -130,8 +131,16 @@ class GlobalState {
 
   Future<void> handleStart([UpdateTasks? tasks]) async {
     startTime ??= DateTime.now();
+    await CrashLogger.instance.log('handleStart: calling startListener');
     await clashCore.startListener();
-    await service?.startVpn();
+    await CrashLogger.instance.log('handleStart: startListener done, calling startVpn');
+    try {
+      await service?.startVpn();
+      await CrashLogger.instance.log('handleStart: startVpn done');
+    } catch (e, st) {
+      await CrashLogger.instance.logError(e, st, context: 'handleStart.startVpn');
+      rethrow;
+    }
     startUpdateTasks(tasks);
   }
 

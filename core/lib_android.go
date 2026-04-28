@@ -99,30 +99,44 @@ func handleStopTun() {
 }
 
 func handleStartTun(fd int, callback unsafe.Pointer) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Errorln("[TUN] panic in handleStartTun:", r)
+			removeTunHook()
+		}
+	}()
 	handleStopTun()
 	tunLock.Lock()
 	defer tunLock.Unlock()
 	now := time.Now()
 	runTime = &now
-	if fd != 0 {
-		// Guard: currentConfig must be loaded via applyProfile before TUN starts.
-		// Without this check, a nil dereference causes SIGSEGV → crash loop.
+	if fd != 0 && fd != -1 {
 		if currentConfig == nil {
 			log.Errorln("[TUN] currentConfig is nil, aborting startTun")
 			return
 		}
+		log.Infoln("[TUN] starting TUN fd=%d device=%s stack=%v",
+			fd, currentConfig.General.Tun.Device, currentConfig.General.Tun.Stack)
 		tunHandler = &TunHandler{
 			callback: callback,
 			limit:    semaphore.NewWeighted(4),
 		}
 		initTunHook()
-		tunListener, _ := t.Start(fd, currentConfig.General.Tun.Device, currentConfig.General.Tun.Stack)
+		tunListener, tunErr := t.Start(fd, currentConfig.General.Tun.Device, currentConfig.General.Tun.Stack)
+		if tunErr != nil {
+			log.Errorln("[TUN] t.Start error:", tunErr)
+			removeTunHook()
+			return
+		}
 		if tunListener != nil {
-			log.Infoln("TUN address: %v", tunListener.Address())
+			log.Infoln("[TUN] started, address: %v", tunListener.Address())
 			tunHandler.listener = tunListener
 		} else {
+			log.Errorln("[TUN] t.Start returned nil listener")
 			removeTunHook()
 		}
+	} else {
+		log.Errorln("[TUN] invalid fd=%d, skipping TUN setup", fd)
 	}
 }
 
