@@ -91,6 +91,10 @@ flutter_launcher_icons:
   min_sdk_android: 21
   web:
     generate: false
+
+flutter:
+  uses-material-design: true
+  generate: true
   assets:
     - assets/data/
     - assets/fonts/
