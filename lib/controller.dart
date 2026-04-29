@@ -747,12 +747,12 @@ class AppController {
     return Result.success(enableTun);
   }
 
-  Future<void> setupClashConfig() async {
-    final commonScaffoldState = globalState.homeScaffoldKey.currentState;
-    if (commonScaffoldState?.mounted != true) return;
-    await commonScaffoldState?.loadingRun(() async {
-      await _setupClashConfig();
-    });
+Future<void> setupClashConfig() async {
+    // SimpleHomeView does not use CommonScaffold / homeScaffoldKey.
+    // Call _setupClashConfig() directly so setupConfig() actually runs and
+    // currentConfig gets set in Go. Without this, getAndroidVpnOptions()
+    // always returns empty data → "VPN options data is null or empty".
+    await _setupClashConfig();
   }
 
   Future<void> _setupClashConfig() async {
