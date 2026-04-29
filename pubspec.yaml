@@ -64,10 +64,7 @@ dependencies:
     path: plugins/proxy
   window_ext:
     path: plugins/window_ext
-  re_editor:
-    git:
-      url: https://github.com/chen08209/re-editor.git
-      ref: main
+  re_editor: ^0.8.0
   flutter_js:
     git:
       url: https://github.com/chen08209/flutter_js
