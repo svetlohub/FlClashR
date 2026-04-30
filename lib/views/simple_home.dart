@@ -487,14 +487,26 @@ class _SettingsState extends ConsumerState<SettingsView> {
 
         // ── VPN ────────────────────────────────────────────────────────────
         _SectionHdr('VPN', context),
-        _Card(context: context, child: _Tile(
-          icon: Icons.flag_rounded, label: 'Пресет «Россия 2026»',
-          context: context,
-          onTap: () {
-            applyRussia2026Preset(ref);
-            _snack('Пресет применён');
-          },
-        )),
+        _Card(context: context, child: Column(children: [
+          _Tile(
+            icon: Icons.flag_rounded, label: 'Пресет «Россия 2026»',
+            context: context,
+            onTap: () {
+              applyRussia2026Preset(ref);
+              _snack('Пресет применён');
+            },
+          ),
+          _Div(context),
+          _Tile(
+            icon: Icons.apps_rounded, label: 'Управление сервисами',
+            sublabel: 'Что пускать через VPN',
+            trailing: Icon(Icons.chevron_right_rounded,
+                color: context.textTer, size: 20),
+            context: context,
+            onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ServicesView())),
+          ),
+        ])),
         const SizedBox(height: 20),
 
         // ── Diagnostics ─────────────────────────────────────────────────────
@@ -944,4 +956,196 @@ class _LoadingRow extends StatelessWidget {
     const SizedBox(width: 12),
     Text(text),
   ]);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Services screen — toggle which services go through VPN
+// ─────────────────────────────────────────────────────────────────────────────
+class ServicesView extends ConsumerStatefulWidget {
+  const ServicesView({super.key});
+  @override
+  ConsumerState<ServicesView> createState() => _ServicesViewState();
+}
+
+class _ServicesViewState extends ConsumerState<ServicesView> {
+  // Current toggle state: serviceId -> bool (true = VPN, false = DIRECT)
+  late Map<String, bool> _states;
+  bool _dirty = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _states = {
+      for (final s in russiaServices) s.id: s.defaultOn,
+    };
+    // Load saved states from current profile overrideData
+    _loadFromProfile();
+  }
+
+  void _loadFromProfile() {
+    final currentId = ref.read(currentProfileIdProvider);
+    if (currentId == null) return;
+    final profiles = ref.read(profilesProvider);
+    final profile = profiles.getProfile(currentId);
+    if (profile == null) return;
+    final od = profile.overrideData;
+    if (!od.enable) return;
+    final ruleValues = od.rule.rules.map((r) => r.value).toSet();
+    // Detect which services are enabled by checking if their first domain is in rules
+    for (final svc in russiaServices) {
+      final firstDomain = svc.domains.first;
+      _states[svc.id] = ruleValues.any((r) => r.contains(firstDomain) && r.contains('PROXY'));
+    }
+  }
+
+  void _toggle(String id, bool value) {
+    setState(() {
+      _states[id] = value;
+      _dirty = true;
+    });
+  }
+
+  void _apply() {
+    applyRussia2026Preset(ref, serviceStates: Map.from(_states));
+    setState(() => _dirty = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('✓ Настройки применены'),
+        backgroundColor: _lime,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: context.bg,
+      appBar: AppBar(
+        backgroundColor: context.bg,
+        foregroundColor: context.textPri,
+        elevation: 0,
+        title: Text('Сервисы через VPN',
+            style: TextStyle(fontWeight: FontWeight.bold,
+                fontSize: 20, color: context.textPri)),
+        actions: [
+          if (_dirty)
+            TextButton(
+              onPressed: _apply,
+              child: const Text('Применить',
+                  style: TextStyle(
+                      color: _violet, fontWeight: FontWeight.bold)),
+            ),
+        ],
+      ),
+      body: Column(children: [
+        // Header description
+        Container(
+          width: double.infinity,
+          margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: _violet.withOpacity(0.10),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: _violet.withOpacity(0.25)),
+          ),
+          child: Row(children: [
+            Icon(Icons.info_outline_rounded, size: 18, color: _violet),
+            const SizedBox(width: 10),
+            Expanded(child: Text(
+              'Включённые сервисы идут через VPN. '
+              'Российские сайты (.ru) всегда напрямую.',
+              style: TextStyle(color: context.textSec, fontSize: 13),
+            )),
+          ]),
+        ),
+        const SizedBox(height: 8),
+
+        Expanded(child: ListView(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
+          children: [
+            // VPN section
+            _SectionHdr('Через VPN', context),
+            _Card(
+              context: context,
+              child: Column(children: [
+                for (int i = 0; i < russiaServices.length; i++) ...[
+                  if (i > 0) _Div(context),
+                  _ServiceTile(
+                    service: russiaServices[i],
+                    value: _states[russiaServices[i].id] ?? russiaServices[i].defaultOn,
+                    onChanged: (v) => _toggle(russiaServices[i].id, v),
+                    context: context,
+                  ),
+                ],
+              ]),
+            ),
+            const SizedBox(height: 16),
+
+            // Apply button
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: FilledButton.icon(
+                onPressed: _apply,
+                icon: const Icon(Icons.check_rounded, color: Colors.white),
+                label: const Text('Применить настройки',
+                    style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white)),
+                style: FilledButton.styleFrom(
+                  backgroundColor: _dirty ? _violet : _violet.withOpacity(0.5),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+            ),
+          ],
+        )),
+      ]),
+    );
+  }
+}
+
+class _ServiceTile extends StatelessWidget {
+  final RussiaService service;
+  final bool value;
+  final ValueChanged<bool> onChanged;
+  final BuildContext context;
+
+  const _ServiceTile({
+    required this.service,
+    required this.value,
+    required this.onChanged,
+    required this.context,
+  });
+
+  @override
+  Widget build(BuildContext ctx) {
+    return SwitchListTile(
+      value: value,
+      onChanged: onChanged,
+      activeColor: _violet,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      title: Row(children: [
+        Text(service.emoji, style: const TextStyle(fontSize: 20)),
+        const SizedBox(width: 10),
+        Text(service.name,
+            style: TextStyle(
+                color: context.textPri,
+                fontSize: 15,
+                fontWeight: FontWeight.w500)),
+      ]),
+      subtitle: Padding(
+        padding: const EdgeInsets.only(left: 30),
+        child: Text(
+          value ? 'Через VPN' : 'Напрямую',
+          style: TextStyle(
+              color: value ? _violet : context.textTer,
+              fontSize: 12,
+              fontWeight: FontWeight.w500),
+        ),
+      ),
+    );
+  }
 }

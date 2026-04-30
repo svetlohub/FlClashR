@@ -1,222 +1,236 @@
 import 'package:flclashx/enum/enum.dart';
 import 'package:flclashx/models/models.dart';
 import 'package:flclashx/providers/config.dart';
+import 'package:flclashx/providers/providers.dart';
 import 'package:flclashx/state.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-const _russia2026Dns = Dns(
+// ─── Сервисы ──────────────────────────────────────────────────────────────────
+// Каждый сервис имеет имя, список доменов и флаг включения по умолчанию.
+class RussiaService {
+  final String id;
+  final String name;
+  final String emoji;
+  final List<String> domains;
+  final bool defaultOn; // true = через VPN, false = DIRECT
+
+  const RussiaService({
+    required this.id,
+    required this.name,
+    required this.emoji,
+    required this.domains,
+    required this.defaultOn,
+  });
+}
+
+const russiaServices = [
+  // ── По умолчанию через VPN ──────────────────────────────────────────────
+  RussiaService(
+    id: 'youtube',
+    name: 'YouTube',
+    emoji: '▶️',
+    domains: ['youtube.com', 'youtu.be', 'googlevideo.com', 'ytimg.com',
+              'yt3.ggpht.com', 'googleapis.com'],
+    defaultOn: true,
+  ),
+  RussiaService(
+    id: 'telegram',
+    name: 'Telegram',
+    emoji: '✈️',
+    domains: ['telegram.org', 't.me', 'telegram.me',
+              'core.telegram.org', 'cdn.telegram.org'],
+    defaultOn: true,
+  ),
+  RussiaService(
+    id: 'whatsapp',
+    name: 'WhatsApp',
+    emoji: '💬',
+    domains: ['whatsapp.com', 'whatsapp.net', 'wa.me'],
+    defaultOn: true,
+  ),
+  // ── Выключены по умолчанию (можно включить) ─────────────────────────────
+  RussiaService(
+    id: 'instagram',
+    name: 'Instagram',
+    emoji: '📸',
+    domains: ['instagram.com', 'cdninstagram.com', 'fbcdn.net'],
+    defaultOn: false,
+  ),
+  RussiaService(
+    id: 'facebook',
+    name: 'Facebook',
+    emoji: '👤',
+    domains: ['facebook.com', 'fb.com', 'fbcdn.net', 'fbsbx.com'],
+    defaultOn: false,
+  ),
+  RussiaService(
+    id: 'twitter',
+    name: 'X (Twitter)',
+    emoji: '🐦',
+    domains: ['twitter.com', 'x.com', 't.co', 'twimg.com'],
+    defaultOn: false,
+  ),
+  RussiaService(
+    id: 'tiktok',
+    name: 'TikTok',
+    emoji: '🎵',
+    domains: ['tiktok.com', 'tiktokcdn.com', 'muscdn.com', 'byteoversea.com'],
+    defaultOn: false,
+  ),
+  RussiaService(
+    id: 'discord',
+    name: 'Discord',
+    emoji: '🎮',
+    domains: ['discord.com', 'discord.gg', 'discordapp.com', 'discordapp.net',
+              'discord.media'],
+    defaultOn: false,
+  ),
+  RussiaService(
+    id: 'spotify',
+    name: 'Spotify',
+    emoji: '🎧',
+    domains: ['spotify.com', 'scdn.co', 'spotifycdn.com', 'byspotify.com'],
+    defaultOn: false,
+  ),
+  RussiaService(
+    id: 'openai',
+    name: 'ChatGPT / OpenAI',
+    emoji: '🤖',
+    domains: ['openai.com', 'chatgpt.com', 'oaistatic.com', 'oaiusercontent.com',
+              'auth0.openai.com', 'browser.pipe.aria.microsoft.com'],
+    defaultOn: false,
+  ),
+  RussiaService(
+    id: 'github',
+    name: 'GitHub',
+    emoji: '🐙',
+    domains: ['github.com', 'githubusercontent.com', 'github.io', 'githubassets.com',
+              'ghcr.io'],
+    defaultOn: false,
+  ),
+  RussiaService(
+    id: 'linkedin',
+    name: 'LinkedIn',
+    emoji: '💼',
+    domains: ['linkedin.com', 'licdn.com'],
+    defaultOn: false,
+  ),
+];
+
+// ─── DNS конфигурация ─────────────────────────────────────────────────────────
+const _presetDns = Dns(
   enable: true,
   preferH3: false,
-  useHosts: true,
+  useHosts: false,
   useSystemHosts: false,
-  respectRules: true,
+  respectRules: false,
   ipv6: false,
-
-  defaultNameserver: [
-    '1.1.1.1',
-    '8.8.8.8',
-  ],
-
+  defaultNameserver: ['8.8.8.8', '1.1.1.1'],
   enhancedMode: DnsMode.fakeIp,
   fakeIpRange: '198.18.0.1/16',
-
-  fakeIpFilter: [
-    '*.lan',
-    '*.local',
-    'localhost.ptlogin2.qq.com',
-    '+.msftconnecttest.com',
-    '+.msftncsi.com',
-    'time.*.com',
-    'time.*.gov',
-    'time.*.edu.cn',
-    'time.*.apple.com',
-    'time-ios.apple.com',
-    'time1.*.com',
-    'time2.*.com',
-    'time3.*.com',
-    'time4.*.com',
-    'time5.*.com',
-    'time6.*.com',
-    'time7.*.com',
-    'ntp.*.com',
-    'ntp1.*.com',
-    'ntp2.*.com',
-    'ntp3.*.com',
-    'ntp4.*.com',
-    'ntp5.*.com',
-    'ntp6.*.com',
-    'ntp7.*.com',
-  ],
-
-  nameserverPolicy: {
-    'geosite:private': 'system',
-    'geosite:ru': 'system',
-    '+.ru': 'system',
-    '+.xn--p1ai': 'system',
-    '+.su': 'system',
-  },
-
-  nameserver: [
-    'https://1.1.1.1/dns-query',
-    'https://8.8.8.8/dns-query',
-    'tls://1.1.1.1:853',
-  ],
-
-  fallback: [
-    'https://1.0.0.1/dns-query',
-    'tls://8.8.4.4:853',
-  ],
-
-  proxyServerNameserver: [
-    'https://1.1.1.1/dns-query',
-    'https://8.8.8.8/dns-query',
-  ],
-
+  fakeIpFilter: [],
+  nameserverPolicy: {},
+  nameserver: ['https://8.8.8.8/dns-query', 'https://1.1.1.1/dns-query'],
+  fallback: ['8.8.4.4', '1.0.0.1'],
+  proxyServerNameserver: ['https://1.1.1.1/dns-query'],
   fallbackFilter: FallbackFilter(
     geoip: false,
-    geoipCode: '',
+    geoipCode: 'RU',
     geosite: [],
-    ipcidr: [
-      '240.0.0.0/4',
-    ],
+    ipcidr: ['240.0.0.0/4'],
     domain: [],
   ),
 );
 
-const _russia2026Tun = Tun(
+const _presetTun = Tun(
   enable: true,
   stack: TunStack.gvisor,
-  dnsHijack: [
-    'any:53',
-  ],
+  dnsHijack: ['any:53'],
+  autoRoute: false,
 );
 
-const _russia2026Rules = [
-  // Anti-QUIC: YouTube/Google often use UDP/443.
-  // Rejecting it forces TCP/TLS path, which is usually more stable for proxy routing.
-  'DST-PORT,443,REJECT,udp',
+// ─── Построение правил из списка сервисов ────────────────────────────────────
+List<String> buildRulesFromServices(Map<String, bool> serviceStates) {
+  final rules = <String>[];
 
-  // -------------------------
-  // Telegram -> Proxy
-  // -------------------------
-  'DOMAIN-SUFFIX,t.me,Proxy',
-  'DOMAIN-SUFFIX,telegram.org,Proxy',
-  'DOMAIN-SUFFIX,telegram.me,Proxy',
-  'DOMAIN-SUFFIX,telegram.dog,Proxy',
-  'DOMAIN-SUFFIX,telegram.space,Proxy',
-  'DOMAIN-SUFFIX,tdesktop.com,Proxy',
-  'DOMAIN-SUFFIX,telegra.ph,Proxy',
-  'DOMAIN-SUFFIX,legra.ph,Proxy',
-  'DOMAIN-SUFFIX,graph.org,Proxy',
-  'DOMAIN-SUFFIX,cdn-telegram.org,Proxy',
-  'DOMAIN-SUFFIX,telesco.pe,Proxy',
-  'DOMAIN-SUFFIX,tg.dev,Proxy',
-  'DOMAIN-KEYWORD,telegram,Proxy',
+  // Правила для включённых сервисов (через VPN)
+  for (final svc in russiaServices) {
+    final isOn = serviceStates[svc.id] ?? svc.defaultOn;
+    if (isOn) {
+      for (final domain in svc.domains) {
+        rules.add('DOMAIN-SUFFIX,$domain,PROXY');
+      }
+    }
+  }
 
-  'IP-CIDR,5.28.195.1/32,Proxy,no-resolve',
-  'IP-CIDR,5.28.195.2/32,Proxy,no-resolve',
-  'IP-CIDR,91.105.192.0/23,Proxy,no-resolve',
-  'IP-CIDR,91.108.4.0/22,Proxy,no-resolve',
-  'IP-CIDR,91.108.8.0/21,Proxy,no-resolve',
-  'IP-CIDR,91.108.16.0/21,Proxy,no-resolve',
-  'IP-CIDR,91.108.56.0/22,Proxy,no-resolve',
-  'IP-CIDR,95.161.64.0/20,Proxy,no-resolve',
-  'IP-CIDR,149.154.160.0/20,Proxy,no-resolve',
+  // Российские ресурсы всегда напрямую
+  rules.addAll([
+    'GEOIP,RU,DIRECT',
+    'DOMAIN-SUFFIX,ru,DIRECT',
+    'DOMAIN-SUFFIX,xn--p1ai,DIRECT',
+    'DOMAIN-SUFFIX,su,DIRECT',
+  ]);
 
-  // -------------------------
-  // WhatsApp -> Proxy
-  // -------------------------
-  'DOMAIN-SUFFIX,whatsapp.com,Proxy',
-  'DOMAIN-SUFFIX,whatsapp.net,Proxy',
-  'DOMAIN-SUFFIX,wa.me,Proxy',
-  'DOMAIN-SUFFIX,whatsapp-plus.info,Proxy',
-  'DOMAIN-SUFFIX,whatsappbrand.com,Proxy',
+  // Всё остальное — через VPN (безопасный дефолт для обхода блокировок)
+  rules.add('MATCH,PROXY');
 
-  // WhatsApp depends on Meta CDN/edge infrastructure.
-  'DOMAIN-SUFFIX,fbsbx.com,Proxy',
-  'DOMAIN-SUFFIX,fbcdn.net,Proxy',
-  'DOMAIN-SUFFIX,facebook.net,Proxy',
+  return rules;
+}
 
-  // -------------------------
-  // YouTube -> Proxy
-  // -------------------------
-  'DOMAIN-SUFFIX,youtube.com,Proxy',
-  'DOMAIN-SUFFIX,www.youtube.com,Proxy',
-  'DOMAIN-SUFFIX,m.youtube.com,Proxy',
-  'DOMAIN-SUFFIX,music.youtube.com,Proxy',
-  'DOMAIN-SUFFIX,youtu.be,Proxy',
-  'DOMAIN-SUFFIX,yt.be,Proxy',
-  'DOMAIN-SUFFIX,ytimg.com,Proxy',
-  'DOMAIN-SUFFIX,googlevideo.com,Proxy',
-  'DOMAIN-SUFFIX,youtubei.googleapis.com,Proxy',
-  'DOMAIN-SUFFIX,yt3.ggpht.com,Proxy',
-  'DOMAIN-KEYWORD,youtube,Proxy',
-  'DOMAIN-KEYWORD,googlevideo,Proxy',
-  'DOMAIN-KEYWORD,ytimg,Proxy',
-
-  // -------------------------
-  // Local / private -> Direct
-  // -------------------------
-  'DOMAIN-SUFFIX,local,DIRECT',
-  'DOMAIN-SUFFIX,lan,DIRECT',
-  'IP-CIDR,10.0.0.0/8,DIRECT,no-resolve',
-  'IP-CIDR,172.16.0.0/12,DIRECT,no-resolve',
-  'IP-CIDR,192.168.0.0/16,DIRECT,no-resolve',
-  'IP-CIDR,127.0.0.0/8,DIRECT,no-resolve',
-  'IP-CIDR,169.254.0.0/16,DIRECT,no-resolve',
-  'IP-CIDR,224.0.0.0/4,DIRECT,no-resolve',
-
-  // -------------------------
-  // Russia / domestic -> Direct
-  // -------------------------
-  'GEOSITE,private,DIRECT',
-  'GEOSITE,ru,DIRECT',
-  'GEOIP,private,DIRECT,no-resolve',
-  'GEOIP,ru,DIRECT,no-resolve',
-
-  'DOMAIN-SUFFIX,ru,DIRECT',
-  'DOMAIN-SUFFIX,xn--p1ai,DIRECT',
-  'DOMAIN-SUFFIX,su,DIRECT',
-
-  // -------------------------
-  // Everything else -> Direct
-  // This is the key stealth change.
-  // -------------------------
-  'MATCH,DIRECT',
-];
-
-void applyRussia2026Preset(WidgetRef ref) {
+// ─── Применить пресет к текущему профилю ────────────────────────────────────
+void applyRussia2026Preset(WidgetRef ref, {Map<String, bool>? serviceStates}) {
+  // DNS + TUN настройки
   ref.read(patchClashConfigProvider.notifier).updateState(
     (state) => state.copyWith(
-      dns: _russia2026Dns,
-      tun: _russia2026Tun,
+      dns: _presetDns,
+      tun: _presetTun,
       mode: Mode.rule,
       allowLan: false,
       logLevel: LogLevel.warning,
       ipv6: false,
       unifiedDelay: true,
-
-      // Keep false for less aggressive connection behavior.
       tcpConcurrent: false,
     ),
   );
-
   ref.read(overrideDnsProvider.notifier).value = true;
-
   ref.read(vpnSettingProvider.notifier).updateState(
     (state) => state.copyWith(
       enable: true,
       systemProxy: false,
       ipv6: false,
-
-      // Important for Android: allow apps/system to bypass when rules say DIRECT.
       allowBypass: true,
     ),
   );
-
   ref.read(networkSettingProvider.notifier).updateState(
-    (state) => state.copyWith(
-      systemProxy: false,
+    (state) => state.copyWith(systemProxy: false),
+  );
+
+  // Применяем правила через overrideData профиля
+  final currentId = ref.read(currentProfileIdProvider);
+  if (currentId == null) return;
+
+  final states = serviceStates ?? {
+    for (final s in russiaServices) s.id: s.defaultOn,
+  };
+  final ruleStrings = buildRulesFromServices(states);
+  final rules = ruleStrings
+      .map((r) => Rule.value(r))
+      .toList();
+
+  ref.read(profilesProvider.notifier).updateProfile(
+    currentId,
+    (profile) => profile.copyWith(
+      overrideData: OverrideData(
+        enable: true,
+        rule: OverrideRule(
+          type: OverrideRuleType.override,
+          overrideRules: rules,
+          addedRules: const [],
+        ),
+      ),
     ),
   );
+
+  // Применяем изменения
+  globalState.appController.applyProfileDebounce(silence: true);
 }
