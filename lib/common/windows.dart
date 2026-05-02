@@ -1,6 +1,10 @@
-// Windows-only feature. No-op on Android.
+// Windows OS helper. All methods are no-ops on Android.
 class WindowsHelper {
   void enableDarkModeForApp() {}
+  Future<bool?> checkService() async => null;
+  Future<bool?> tryStartExistingService() async => null;
+  Future<bool?> installService() async => null;
+  Future<void> runas(String executable, {List<String>? args}) async {}
 }
 
-final windows = null;
+final WindowsHelper? windows = null;
