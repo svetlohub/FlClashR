@@ -203,8 +203,6 @@ enum KeyboardModifier {
 
   const KeyboardModifier(this.physicalKeys);
 }
-;
-}
 
 enum HotAction {
   start,
