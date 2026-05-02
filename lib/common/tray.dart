@@ -1,6 +1,8 @@
-// Desktop-only feature. Tray is not available on Android.
+// Desktop-only system tray. All methods are no-ops on Android.
 class Tray {
-  Future<void> update({bool? force}) async {}
+  // trayState parameter accepted but ignored on Android
+  void update({dynamic trayState, bool? force}) {}
 }
 
-final Tray? tray = null;
+// tray is a non-null instance so tray.update() works without ?. check
+final Tray tray = Tray();
