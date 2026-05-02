@@ -7,7 +7,6 @@ import 'package:flclashx/common/common.dart';
 import 'package:flutter/services.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:win32_registry/win32_registry.dart';
 
 class DeviceDetails {
   DeviceDetails({
@@ -55,11 +54,7 @@ class DeviceInfoService {
       const keyPath = r'SOFTWARE\Microsoft\Cryptography';
       const valueName = 'MachineGuid';
 
-      final key = Registry.openPath(RegistryHive.localMachine, path: keyPath);
-      final data = key.getValue(valueName);
-      key.close();
-
-      return data?.toString();
+      return null; // Windows-only, not available on Android
     } catch (e) {
       return null;
     }

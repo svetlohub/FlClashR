@@ -6,7 +6,6 @@ import 'package:flclashx/clash/clash.dart';
 import 'package:flclashx/common/common.dart';
 import 'package:flclashx/core/crash_logger.dart';
 import 'package:flclashx/l10n/l10n.dart';
-import 'package:flclashx/manager/hotkey_manager.dart';
 import 'package:flclashx/manager/manager.dart';
 import 'package:flclashx/plugins/app.dart';
 import 'package:flclashx/providers/providers.dart';
@@ -17,7 +16,6 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'controller.dart';
-import 'pages/pages.dart';
 
 class Application extends ConsumerStatefulWidget {
   const Application({super.key});
@@ -33,9 +31,6 @@ class ApplicationState extends ConsumerState<Application> {
   final _pageTransitionsTheme = const PageTransitionsTheme(
     builders: <TargetPlatform, PageTransitionsBuilder>{
       TargetPlatform.android: CommonPageTransitionsBuilder(),
-      TargetPlatform.windows: CommonPageTransitionsBuilder(),
-      TargetPlatform.linux: CommonPageTransitionsBuilder(),
-      TargetPlatform.macOS: CommonPageTransitionsBuilder(),
     },
   );
 
@@ -48,10 +43,6 @@ class ApplicationState extends ConsumerState<Application> {
   @override
   void initState() {
     super.initState();
-
-    if (Platform.isWindows) {
-      windows?.enableDarkModeForApp();
-    }
 
     _autoUpdateGroupTask();
     _autoUpdateProfilesTask();
@@ -92,24 +83,9 @@ class ApplicationState extends ConsumerState<Application> {
     });
   }
 
-  Widget _buildPlatformState(Widget child) {
-    if (system.isDesktop) {
-      return WindowManager(
-        child: TrayManager(
-          child: HotKeyManager(
-            child: ProxyManager(
-              child: child,
-            ),
-          ),
-        ),
-      );
-    }
-    return AndroidManager(
-      child: TileManager(
-        child: child,
-      ),
-    );
-  }
+  Widget _buildPlatformState(Widget child) => AndroidManager(
+    child: TileManager(child: child),
+  );
 
   Widget _buildState(Widget child) => AppStateManager(
         child: ClashManager(
@@ -126,12 +102,7 @@ class ApplicationState extends ConsumerState<Application> {
         ),
       );
 
-  Widget _buildPlatformApp(Widget child) {
-    if (system.isDesktop) {
-      return WindowHeaderContainer(child: child);
-    }
-    return VpnManager(child: child);
-  }
+  Widget _buildPlatformApp(Widget child) => VpnManager(child: child);
 
   Widget _buildApp(Widget child) => MessageManager(
         child: ThemeManager(child: child),
@@ -161,13 +132,6 @@ class ApplicationState extends ConsumerState<Application> {
                   final Widget app = AppEnvManager(
                     child: _buildPlatformApp(_buildApp(child!)),
                   );
-                  if (Platform.isMacOS) {
-                    return FittedBox(
-                      fit: BoxFit.contain,
-                      alignment: Alignment.topCenter,
-                      child: SizedBox(width: 500, height: 800, child: app),
-                    );
-                  }
                   return app;
                 },
                 scrollBehavior: BaseScrollBehavior(),
