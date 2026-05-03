@@ -4,7 +4,7 @@ class WindowsHelper {
   Future<bool?> checkService() async => null;
   Future<bool?> tryStartExistingService() async => null;
   Future<bool?> installService() async => null;
-  Future<void> runas(String executable, {List<String>? args}) async {}
+  Future<void> runas(String executable, [String args = '']) async {}
 }
 
 final WindowsHelper? windows = null;
