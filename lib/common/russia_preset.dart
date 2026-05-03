@@ -39,8 +39,13 @@ const russiaServices = [
       'youtube.com', 'youtu.be', 'ytimg.com',
       'googlevideo.com', 'yt3.ggpht.com',
       'youtube-nocookie.com', 'youtubeembeddedplayer.googleapis.com',
+      // RoscomVPN additions: YouTube TV, Studio, Music
+      'youtubei.googleapis.com', 'youtube.googleapis.com',
+      'youtubekids.com', 'yt.be',
+      // Google Video CDN nodes used by YouTube
+      'video.google.com',
     ],
-    keywords: ['youtube'],          // CDN поддомены непредсказуемы
+    keywords: ['youtube', 'googlevideo'],   // CDN поддомены непредсказуемы
     defaultOn: true,
   ),
   RussiaService(
@@ -51,8 +56,12 @@ const russiaServices = [
       't.me', 'telegram.org', 'telegram.me',
       'core.telegram.org', 'cdn.telegram.org',
       'tdesktop.com',
+      // RoscomVPN additions: WebK, Telegram fragments, CDN2
+      'web.telegram.org', 'telegram.dog',
+      'cdn1.telegram.org', 'cdn2.telegram.org',
     ],
     // Telegram IP-диапазоны — DPI режет именно по IP
+    // Source: https://core.telegram.org/resources/cidr.txt (May 2026)
     ipCidrs: [
       '91.108.0.0/16',
       '91.108.4.0/22',
@@ -60,6 +69,10 @@ const russiaServices = [
       '91.108.56.0/22',
       '149.154.160.0/20',
       '149.154.164.0/22',
+      // RoscomVPN additional Telegram DC ranges
+      '2001:b28:f23d::/48',
+      '2001:b28:f23f::/48',
+      '2001:67c:4e8::/48',
     ],
     defaultOn: true,
   ),
@@ -72,6 +85,10 @@ const russiaServices = [
       'whatsapp.com', 'whatsapp.net', 'wa.me',
       'fbcdn.net', 'fbsbx.com',          // WhatsApp медиа-CDN
       'facebook.com', 'fb.com',           // авторизация
+      // RoscomVPN additions: WhatsApp Business, graph API
+      'whatsapp.business',
+      'graph.facebook.com',
+      'connect.facebook.net',
     ],
     defaultOn: true,
   ),
@@ -81,14 +98,27 @@ const russiaServices = [
     id: 'instagram',
     name: 'Instagram',
     emoji: '📸',
-    domains: ['instagram.com', 'cdninstagram.com'],
+    domains: [
+      'instagram.com', 'cdninstagram.com',
+      'www.instagram.com', 'i.instagram.com',
+      'graph.instagram.com',
+      // Threads (Instagram's Twitter alternative)
+      'threads.net',
+      // Meta/Facebook CDN — required for Instagram media (stories, reels, photos)
+      // Same infrastructure as WhatsApp; without these, media loads blank
+      'fbcdn.net', 'fbsbx.com',
+      'facebook.com', 'fb.com',
+      'connect.facebook.net',
+    ],
+    keywords: ['cdninstagram', 'fbcdn'],
     defaultOn: false,
   ),
   RussiaService(
     id: 'twitter',
     name: 'X (Twitter)',
     emoji: '🐦',
-    domains: ['twitter.com', 'x.com', 't.co', 'twimg.com'],
+    domains: ['twitter.com', 'x.com', 't.co', 'twimg.com', 'abs.twimg.com',
+        'video.twimg.com', 'pbs.twimg.com'],
     defaultOn: false,
   ),
   RussiaService(
@@ -190,18 +220,16 @@ const _presetTun = Tun(
 List<String> buildRulesFromServices(Map<String, bool> serviceStates) {
   final rules = <String>[];
 
-  // Блокировка QUIC/HTTP3 через UDP:443 — заставляет приложения
-  // откатиться на TCP, который лучше работает через прокси
-  rules.add('DST-PORT,443,REJECT,udp');
-
-  // Правила для каждого включённого сервиса
+  // ── 1. Service proxy rules (MUST come first) ────────────────────────────────
   for (final svc in russiaServices) {
     final isOn = serviceStates[svc.id] ?? svc.defaultOn;
     if (!isOn) continue;
 
     // IP-CIDR правила первыми (приоритет над доменными)
+    // IPv6 CIDRs (contain ':') require IP-CIDR6 rule type in Mihomo
     for (final cidr in svc.ipCidrs) {
-      rules.add('IP-CIDR,$cidr,PROXY,no-resolve');
+      final ruleType = cidr.contains(':') ? 'IP-CIDR6' : 'IP-CIDR';
+      rules.add('$ruleType,$cidr,PROXY,no-resolve');
     }
     // Доменные правила
     for (final domain in svc.domains) {
@@ -213,7 +241,7 @@ List<String> buildRulesFromServices(Map<String, bool> serviceStates) {
     }
   }
 
-  // Российские ресурсы — всегда напрямую
+  // ── 2. Российские ресурсы — всегда напрямую ─────────────────────────────────
   rules.addAll([
     'GEOIP,RU,DIRECT',
     'DOMAIN-SUFFIX,ru,DIRECT',
@@ -221,9 +249,15 @@ List<String> buildRulesFromServices(Map<String, bool> serviceStates) {
     'DOMAIN-SUFFIX,su,DIRECT',
   ]);
 
-  // MATCH → DIRECT: 95% трафика идёт как обычно.
-  // DPI видит обычного пользователя, а не VPN-пользователя.
-  // Только явно указанные сервисы проходят через прокси.
+  // ── 3. Блокировка QUIC/HTTP3 через UDP:443 — ПОСЛЕ сервисных правил ─────────
+  // Размещаем здесь: сначала явные proxy-правила срабатывают по домену/IP,
+  // затем для остального UDP:443 — REJECT (форсируем TCP для прокси).
+  // Если поставить выше — QUIC-трафик Telegram/YouTube будет заблокирован
+  // до того как сервисные правила его перехватят.
+  rules.add('DST-PORT,443,REJECT,udp');
+
+  // ── 4. MATCH,DIRECT — всегда последним ──────────────────────────────────────
+  // 95% трафика идёт напрямую. DPI видит обычного пользователя.
   rules.add('MATCH,DIRECT');
 
   return rules;
