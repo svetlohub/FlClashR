@@ -116,36 +116,6 @@ DON'T:
 ❌ End session without updating context files
 ❌ Ask permission for obvious fixes (just fix them)
 
-Quick Reference: Common Mistakes
-
-| Mistake | Consequence | Detection |
-|---------|-------------|-----------|
-| Adding ClashLibHandler to _service() | SIGSEGV crash | App crashes on VPN start |
-| Using homeScaffoldKey guard | VPN starts without config | Green button, no routing |
-| MATCH,DIRECT before service rules | All traffic goes direct | dnsleaktest shows no proxy |
-| Calling initNativeApiBridge twice | SIGSEGV crash | Native crash in logcat |
-| Adding IPC between engines | Messages lost silently | VPN config never applied |
-| Removing QUIC block rule | QUIC leaks bypass proxy | Browser uses UDP 443 directly |
-
-
-Environment
-Flutter: 3.32.8
-NDK: 27.0.12077973
-compileSdk/targetSdk: 36
-minSdk: 23
-Java: 17
-Go: (matching libclash.so build)
-Keystore: alias=flclashr, pass=123456 (CI-generated)
-
-
-Использование
-
-1. Создай директорию FlClashR/.claude/
-2. Сохрани все 4 файла
-3. Добавь в .gitignore только если хочешь скрыть от публичного репо (но рекомендую коммитить — это часть инженерной документации):
-
-Опционально:
-.claude/
 
 4. В начале каждой сессии с Claude:
 
@@ -155,18 +125,5 @@ Keystore: alias=flclashr, pass=123456 (CI-generated)
 5. В конце каждой сессии:
 
 Обнови SESSION_CONTEXT.md и CHANGELOG.md с учётом сделанных изменений.
-
-
-Статистика
-
-| Файл | Строк | Назначение |
-|------|-------|------------|
-| SESSION_CONTEXT.md | ~180 | Быстрый вход в контекст |
-| ARCHITECTURE.md | ~200 | Почему сделано так, а не иначе |
-| CHANGELOG.md | ~70 | История для поиска регрессий |
-| RULES.md | ~200 | Алгоритм поведения Claude |
-| Всего | ~650 | Вместо 3000+ строк дампа в промпте |
-
-Экономия токенов: ~78% контекста освобождается под реальную работу вместо описания проекта.
 
 Файлы готовы к коммиту. Хочешь что-то докрутить в RULES.md (например, добавить специфичные для твоего стека правила тестирования) или добавить секцию в SESSION_CONTEXT.md про текущую проблему с YouTube/Telegram?
