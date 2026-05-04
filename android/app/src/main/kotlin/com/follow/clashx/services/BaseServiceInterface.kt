@@ -32,7 +32,6 @@ interface BaseServiceInterface {
 
 fun Service.createFlClashXNotificationBuilder(): Deferred<NotificationCompat.Builder> =
     CoroutineScope(Dispatchers.Main).async {
-        val stopText = GlobalState.getText("stop")
         val intent = Intent(this@createFlClashXNotificationBuilder, MainActivity::class.java)
 
         val pendingIntent = if (Build.VERSION.SDK_INT >= 31) {
@@ -54,15 +53,21 @@ fun Service.createFlClashXNotificationBuilder(): Deferred<NotificationCompat.Bui
             )
         ) {
             setSmallIcon(R.drawable.ic)
-            setContentTitle("FlClashX")
+            // Persistent marketing title — visible in notification shade
+            setContentTitle("Интернет сейчас свободнее")
             setContentIntent(pendingIntent)
             setCategory(NotificationCompat.CATEGORY_SERVICE)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 foregroundServiceBehavior = FOREGROUND_SERVICE_IMMEDIATE
             }
             setOngoing(true)
+            // Action 1: Disconnect VPN
             addAction(
-                0, stopText, getActionPendingIntent("STOP")
+                0, "Отключить", getActionPendingIntent("STOP")
+            )
+            // Action 2: Reconnect VPN (stop then start)
+            addAction(
+                0, "Переподключить", getActionPendingIntent("RECONNECT")
             )
             setShowWhen(false)
             setOnlyAlertOnce(true)
