@@ -63,17 +63,24 @@ const russiaServices = [
     // Telegram IP-диапазоны — DPI режет именно по IP
     // Source: https://core.telegram.org/resources/cidr.txt (May 2026)
     ipCidrs: [
-      '91.108.0.0/16',
-      '91.108.4.0/22',
-      '91.108.8.0/22',
-      '91.108.56.0/22',
-      '149.154.160.0/20',
-      '149.154.164.0/22',
-      // RoscomVPN additional Telegram DC ranges
+      // Primary Telegram DC subnets (from core.telegram.org/resources/cidr.txt)
+      '91.108.4.0/22',   // DC1-MTProto
+      '91.108.8.0/22',   // DC2-MTProto
+      '91.108.12.0/22',  // DC2-Media (was missing — causes media/calls to fail)
+      '91.108.16.0/22',  // DC3-MTProto (was missing)
+      '91.108.36.0/22',  // DC4 (was missing)
+      '91.108.56.0/22',  // DC5-MTProto
+      '149.154.160.0/20', // Legacy /20 block (covers 160-175)
+      '149.154.164.0/22', // DC4-MTProto (explicit)
+      // RoscomVPN additional ranges
+      '185.76.144.0/22', // Telegram CDN (was missing)
+      // IPv6 — use IP-CIDR6 rule (handled in buildRulesFromServices)
       '2001:b28:f23d::/48',
       '2001:b28:f23f::/48',
       '2001:67c:4e8::/48',
+      '2001:67c:4e8:f003::/64',
     ],
+    keywords: ['telegram'],  // keyword fallback for subdomains not listed above
     defaultOn: true,
   ),
   RussiaService(
