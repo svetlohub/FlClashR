@@ -40,32 +40,6 @@
 
 ---
 
-## 📸 Скриншоты / Screenshots
-
-<div align="center">
-<table>
-<tr>
-  <td align="center">
-    <!-- screenshot: главный экран светлая тема -->
-    <img src="docs/screenshots/home_light.png" width="200" alt="Home — Light" />
-    <br/><sub>Главный экран (светлая)</sub>
-  </td>
-  <td align="center">
-    <!-- screenshot: главный экран тёмная тема -->
-    <img src="docs/screenshots/home_dark.png" width="200" alt="Home — Dark" />
-    <br/><sub>Главный экран (тёмная)</sub>
-  </td>
-  <td align="center">
-    <!-- screenshot: настройки сервисов (Россия-пресет) -->
-    <img src="docs/screenshots/services.png" width="200" alt="Services" />
-    <br/><sub>Сервисы / Пресет</sub>
-  </td>
-</tr>
-</table>
-</div>
-
----
-
 ## 🚀 Быстрый старт / Quick Start
 
 ### Установить APK (Release)
