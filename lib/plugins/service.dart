@@ -27,6 +27,22 @@ class Service {
 
   Future<bool?> startVpn() async {
     final options = await clashLib?.getAndroidVpnOptions();
+    // Guard: if options is null, Kotlin throws "VPN options data is null or empty"
+    // which crashes with a confusing PlatformException. Throw early with a clear message.
+    if (options == null) {
+      throw Exception(
+        'VPN configuration is missing. '
+        'Please import a subscription first, then try again. '
+        '(getAndroidVpnOptions returned null — config may not be loaded into core yet)',
+      );
+    }
+    // Sanity check: ipv4Address must be non-empty for TUN to establish
+    if (options.ipv4Address.isEmpty) {
+      throw Exception(
+        'VPN configuration is incomplete (no TUN address). '
+        'Try re-importing your subscription.',
+      );
+    }
     return methodChannel.invokeMethod<bool>("startVpn", {
       'data': json.encode(options),
     });
