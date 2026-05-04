@@ -19,7 +19,7 @@ var dartApiInitialized bool
 //export initNativeApiBridge
 func initNativeApiBridge(api unsafe.Pointer) {
 	// Dart_InitializeApiDL must only be called ONCE per process.
-	// The service FlutterEngine also calls this - second call would
+	// The service FlutterEngine also calls this — second call would
 	// overwrite the Dart VM function pointers and corrupt SendToPort.
 	if dartApiInitialized {
 		return
@@ -48,12 +48,29 @@ func freeCString(s *C.char) {
 	C.free(unsafe.Pointer(s))
 }
 
+// portFromCallback reads the Dart SendPort integer that was stored in
+// ActionResult.Callback by invokeAction. Returns -1 if Callback is nil.
+func portFromCallback(cb unsafe.Pointer) int64 {
+	if cb == nil {
+		return -1
+	}
+	return *(*int64)(cb)
+}
+
+// send posts the serialised ActionResult JSON to the Dart ReceivePort.
+// The target port is stored in result.Callback (set by invokeAction).
+// Port int64 was removed from ActionResult upstream; Callback is the
+// replacement mechanism for carrying the opaque port reference.
 func (result ActionResult) send() {
+	port := portFromCallback(result.Callback)
+	if port == -1 {
+		return
+	}
 	data, err := result.Json()
 	if err != nil {
 		return
 	}
-	bridge.SendToPort(result.Port, string(data))
+	bridge.SendToPort(port, string(data))
 }
 
 //export invokeAction
@@ -66,10 +83,15 @@ func invokeAction(paramsChar *C.char, port C.longlong) {
 		bridge.SendToPort(i, err.Error())
 		return
 	}
+	// Heap-allocate the port integer so it can be stored as unsafe.Pointer
+	// in ActionResult.Callback. The pointer is valid for the goroutine's
+	// lifetime; Go's GC will not move it (pinned by the pointer itself).
+	portPtr := new(int64)
+	*portPtr = i
 	result := ActionResult{
-		Id:     action.Id,
-		Method: action.Method,
-		Port:   i,
+		Id:       action.Id,
+		Method:   action.Method,
+		Callback: unsafe.Pointer(portPtr),
 	}
 	go handleAction(action, result)
 }
@@ -78,10 +100,13 @@ func sendMessage(message Message) {
 	if messagePort == -1 {
 		return
 	}
+	// Heap-allocate port for Callback, same pattern as invokeAction.
+	portPtr := new(int64)
+	*portPtr = messagePort
 	result := ActionResult{
-		Method: messageMethod,
-		Port:   messagePort,
-		Data:   message,
+		Method:   messageMethod,
+		Callback: unsafe.Pointer(portPtr),
+		Data:     message,
 	}
 	result.send()
 }
