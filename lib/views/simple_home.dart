@@ -16,45 +16,57 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flclashx/theme/app_theme.dart';
 
-// ─── Palette — light/dark adaptive ───────────────────────────────────────────
-// Accent set: violet (trust+care), sky-blue (openness), lime (energy),
-// orange (optimism), slate (reliability)
-const _violet    = Color(0xFF7B5EA7);
-const _violetLt  = Color(0xFF9D7EC9);
-const _sky       = Color(0xFF4BBFFF);
-const _skyLt     = Color(0xFF78D4FF);
-const _lime      = Color(0xFF8BC34A);
-const _limeDk    = Color(0xFF6DA033);
-const _orange    = Color(0xFFFF7043);
+// ─── Palette — brand colors from AppTheme (mapped to local constants) ─────────
+// Primary: Emerald #00703C / #00A055 (dark)
+// Accent:  Spring  #A0E720 / #7AB800 (light)
+// Info:    Sky     #00ADEE
+// Success: Arctic  #42E3B4
+// Warning/Error: orange #FF8A00
+
+const _emerald   = AppColors.emerald;
+const _emeraldLt = AppColors.emeraldLight;
+const _spring    = AppColors.spring;
+const _springDk  = AppColors.springDark;
+const _sky       = AppColors.sky;
+const _arctic    = AppColors.arctic;
+const _orange    = AppColors.warning;
+
+// Kept for backward compat with palette code below — mapped to brand
+const _violet    = _emerald;        // primary interactive
+const _violetLt  = _emeraldLt;     // primary on dark
+const _lime      = _spring;        // success/active
+const _limeDk    = _springDk;      // success on light
 const _slate     = Color(0xFF78909C);
 
-// Dark theme surfaces
-const _bgDark    = Color(0xFF0F0F14);
-const _surfDark  = Color(0xFF1C1C26);
-const _surfHiDk  = Color(0xFF272733);
-const _divDark   = Color(0xFF2E2E3E);
+// Dark theme surfaces — use AppColors
+// (kept as aliases for legacy code — resolved via _ThemeX extension)
+const _bgDark    = AppColors.darkBg;
+const _surfDark  = AppColors.darkSurface;
+const _surfHiDk  = AppColors.darkSurfaceHigh;
+const _divDark   = AppColors.darkDivider;
 
-// Light theme surfaces  
-const _bgLight   = Color(0xFFF4F4F8);
-const _surfLight = Color(0xFFFFFFFF);
-const _surfHiLt  = Color(0xFFEEEEF5);
-const _divLight  = Color(0xFFDDDDE8);
+// Light theme surfaces
+const _bgLight   = AppColors.lightBg;
+const _surfLight = AppColors.lightSurface;
+const _surfHiLt  = AppColors.lightSurfaceHigh;
+const _divLight  = AppColors.lightDivider;
 
 // Text — always referenced via theme, not hardcoded
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Theme helper
+// Theme helper — delegates to AppColors for consistency
 // ─────────────────────────────────────────────────────────────────────────────
 extension _ThemeX on BuildContext {
   bool get isDark => Theme.of(this).brightness == Brightness.dark;
-  Color get bg       => isDark ? _bgDark    : _bgLight;
-  Color get surf     => isDark ? _surfDark  : _surfLight;
-  Color get surfHi   => isDark ? _surfHiDk  : _surfHiLt;
-  Color get divider  => isDark ? _divDark   : _divLight;
-  Color get textPri  => isDark ? const Color(0xFFEEEEF5) : const Color(0xFF1A1A2E);
-  Color get textSec  => isDark ? const Color(0xFF9999BB) : const Color(0xFF666688);
-  Color get textTer  => isDark ? const Color(0xFF4A4A6A) : const Color(0xFFAAAAAA);
+  Color get bg       => isDark ? AppColors.darkBg           : AppColors.lightBg;
+  Color get surf     => isDark ? AppColors.darkSurface      : AppColors.lightSurface;
+  Color get surfHi   => isDark ? AppColors.darkSurfaceHigh  : AppColors.lightSurfaceHigh;
+  Color get divider  => isDark ? AppColors.darkDivider      : AppColors.lightDivider;
+  Color get textPri  => isDark ? AppColors.darkTextPri      : AppColors.lightTextPri;
+  Color get textSec  => isDark ? AppColors.darkTextSec      : AppColors.lightTextSec;
+  Color get textTer  => isDark ? AppColors.darkTextTer      : AppColors.lightTextTer;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -80,7 +92,7 @@ Future<void> doProfileImport({
   final sendHd = prefs.getBool('sendDeviceHeaders') ?? true;
   final base   = Profile.normal(url: url);
 
-  // Attempt 1: standard Profile.update() — works for Clash YAML subs
+  // Attempt 1: standard Profile.update() — works for valid Clash YAML subs
   Profile? profile;
   Object? firstError;
   try {
@@ -100,37 +112,88 @@ Future<void> doProfileImport({
       rawBytes = resp.data;
     } catch (e) { throw firstError ?? e; }
 
-    if (rawBytes == null || rawBytes.isEmpty) throw firstError ?? 'Пустой ответ сервера.';
+    if (rawBytes == null || rawBytes.isEmpty) {
+      throw firstError ?? 'Пустой ответ сервера.';
+    }
+
     final rawText = utf8.decode(rawBytes, allowMalformed: true).trim();
+
+    // Early content-type sniff: reject HTML, JSON error pages, etc.
+    if (_looksLikeHtml(rawText)) {
+      throw 'Сервер вернул HTML-страницу вместо подписки. '
+          'Проверьте ссылку — возможно, токен истёк или ссылка неверна.';
+    }
+    if (_looksLikeJsonError(rawText)) {
+      throw 'Сервер вернул ошибку: ${rawText.length > 200 ? rawText.substring(0, 200) : rawText}';
+    }
+
     final origErr = firstError?.toString() ?? '';
     final isYamlErr = origErr.contains('yaml') || origErr.contains('mapping') ||
-        origErr.contains('line ');
+        origErr.contains('line ') || origErr.contains('YAML') ||
+        origErr.contains('parse');
 
-    // 2a: valid Clash YAML with unquoted colon values (paid VPN server names)
-    if (isYamlErr && _looksLikeClashYaml(rawText)) {
-      try { profile = await base.saveFileWithString(_fixYamlColonValues(rawText)); }
-      catch (_) {}
+    // 2a: Clash YAML with unquoted colon values (server names like "City: Name")
+    if (_looksLikeClashYaml(rawText)) {
+      try {
+        final fixed = _fixYamlColonValues(rawText);
+        profile = await base.saveFileWithString(fixed);
+      } catch (e) {
+        // saveFileWithString failed Clash validation — fall through to 2b
+        if (profile == null && !_looksConvertible(rawText)) {
+          throw 'Ошибка разбора YAML подписки: $e'
+              '\n\nСовет: проверьте, что ссылка ведёт на Clash-формат.';
+        }
+      }
     }
 
     // 2b: format conversion (base64 proxy list, single URI, etc.)
     if (profile == null) {
       final String yaml;
-      try { yaml = convertSubscriptionToClashYaml(rawText); }
-      catch (e) {
-        if (isYamlErr) throw 'Ошибка YAML: $firstError\nОшибка конвертации: $e';
+      try {
+        yaml = convertSubscriptionToClashYaml(rawText);
+      } catch (e) {
+        if (isYamlErr) {
+          throw 'Ошибка YAML в подписке (строка с двоеточием не взята в кавычки?): '
+              '${firstError.toString().split('\n').first}'
+              '\nОшибка конвертации: $e';
+        }
         throw firstError ?? e;
       }
-      try { profile = await base.saveFileWithString(yaml); }
-      catch (e) { throw 'Конфиг невалидный: $e\nИсходная ошибка: $firstError'; }
+      try {
+        profile = await base.saveFileWithString(yaml);
+      } catch (e) {
+        throw 'Конфиг прошёл конвертацию, но не принят ядром: $e'
+            '\nИсходная ошибка: $firstError';
+      }
     }
   }
 
-  ref.read(profilesProvider.notifier).setProfile(profile);
+  ref.read(profilesProvider.notifier).setProfile(profile!);
   if (ref.read(currentProfileIdProvider) == null) {
     ref.read(currentProfileIdProvider.notifier).value = profile.id;
     globalState.appController.applyProfileDebounce(silence: true);
   }
 }
+
+// ─── Content-type sniff helpers ───────────────────────────────────────────────
+bool _looksLikeHtml(String s) {
+  final lower = s.toLowerCase();
+  return lower.startsWith('<!doctype') ||
+      lower.startsWith('<html') ||
+      (lower.contains('<html') && lower.contains('<head'));
+}
+
+bool _looksLikeJsonError(String s) {
+  final t = s.trim();
+  if (!t.startsWith('{') && !t.startsWith('[')) return false;
+  // Quick heuristic: JSON that contains "error" or "message" key
+  return t.contains('"error"') || t.contains('"message"') || t.contains('"code"');
+}
+
+bool _looksConvertible(String s) =>
+    s.contains('vmess://') || s.contains('vless://') ||
+    s.contains('ss://') || s.contains('trojan://') ||
+    s.contains('hysteria2://') || s.contains('hy2://');
 
 // ─── YAML helpers ─────────────────────────────────────────────────────────────
 bool _looksLikeClashYaml(String s) =>
@@ -190,11 +253,36 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
   void dispose() { _pulse.dispose(); super.dispose(); }
 
   Future<void> _toggle(bool isOn) async {
+    // Pre-flight: if user wants to START, verify a profile is loaded
+    if (!isOn) {
+      final profileId = ref.read(currentProfileIdProvider);
+      if (profileId == null) {
+        _snack(
+          '⚠️ Сначала импортируйте подписку. VPN не может запуститься без конфига.',
+          error: true,
+          dur: const Duration(seconds: 6),
+        );
+        return;
+      }
+    }
     try {
       await globalState.appController.updateStatus(!isOn);
     } catch (e, st) {
       await CrashLogger.instance.logError(e, st);
-      if (mounted) _snack('Ошибка: $e', error: true);
+      if (!mounted) return;
+      // Show friendly message for the "VPN configuration missing" case
+      final msg = e.toString();
+      if (msg.contains('VPN configuration') || msg.contains('null or empty') ||
+          msg.contains('getAndroidVpnOptions')) {
+        _snack(
+          '⚠️ Конфиг VPN не загружен. Переимпортируйте подписку и попробуйте снова.',
+          error: true,
+          dur: const Duration(seconds: 8),
+        );
+      } else {
+        final display = msg.length > 200 ? '${msg.substring(0, 200)}…' : msg;
+        _snack('Ошибка: $display', error: true);
+      }
     }
   }
 
@@ -372,18 +460,30 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
   }
 
   Future<void> _runImport(BuildContext ctx, String url) async {
-    final ctrl = ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
-      content: _LoadingRow('Загружаем подписку…'),
-      duration: Duration(seconds: 90),
-    ));
+    // maybeOf guards against stale ctx if dialog was already popped
+    ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? ctrl;
+    try {
+      ctrl = ScaffoldMessenger.maybeOf(ctx)?.showSnackBar(const SnackBar(
+        content: _LoadingRow('Загружаем подписку…'),
+        duration: Duration(seconds: 90),
+      ));
+    } catch (_) {}
+
+    Object? importError;
     try {
       await doProfileImport(url: url, ref: ref, context: ctx);
-      ctrl.close();
-      _snack('✓ Подписка добавлена');
     } catch (e, st) {
+      importError = e;
       await CrashLogger.instance.logError(e, st, context: 'home import');
-      ctrl.close();
-      _snack('Ошибка: $e', error: true, dur: const Duration(seconds: 8));
+    } finally {
+      try { ctrl?.close(); } catch (_) {}
+    }
+    if (importError != null) {
+      final msg = importError.toString();
+      final display = msg.length > 200 ? '${msg.substring(0, 200)}…' : msg;
+      _snack('Ошибка: $display', error: true, dur: const Duration(seconds: 8));
+    } else {
+      _snack('✓ Подписка добавлена');
     }
   }
 }
@@ -547,18 +647,29 @@ class _SettingsState extends ConsumerState<SettingsView> {
   }
 
   Future<void> _runImport(BuildContext ctx, String url) async {
-    final ctrl = ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
-      content: _LoadingRow('Загружаем подписку…'),
-      duration: Duration(seconds: 90),
-    ));
+    ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? ctrl;
+    try {
+      ctrl = ScaffoldMessenger.maybeOf(ctx)?.showSnackBar(const SnackBar(
+        content: _LoadingRow('Загружаем подписку…'),
+        duration: Duration(seconds: 90),
+      ));
+    } catch (_) {}
+
+    Object? importError;
     try {
       await doProfileImport(url: url, ref: ref, context: ctx);
-      ctrl.close();
-      _snack('✓ Подписка добавлена');
     } catch (e, st) {
+      importError = e;
       await CrashLogger.instance.logError(e, st, context: 'settings import');
-      ctrl.close();
-      _snack('Ошибка: $e', error: true);
+    } finally {
+      try { ctrl?.close(); } catch (_) {}
+    }
+    if (importError != null) {
+      final msg = importError.toString();
+      final display = msg.length > 200 ? '${msg.substring(0, 200)}…' : msg;
+      _snack('Ошибка: $display', error: true);
+    } else {
+      _snack('✓ Подписка добавлена');
     }
   }
 
@@ -828,15 +939,15 @@ class _Card extends StatelessWidget {
   final BuildContext context;
   const _Card({required this.child, required this.context});
   @override
-  Widget build(BuildContext ctx) => Container(
-    decoration: BoxDecoration(
-        color: context.surf,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: context.isDark ? [] : [
-          BoxShadow(color: Colors.black.withOpacity(0.06),
-              blurRadius: 8, offset: const Offset(0, 2)),
-        ]),
-    child: child,
+  Widget build(BuildContext ctx) => ClipRRect(
+    borderRadius: BorderRadius.circular(20),
+    child: BackdropFilter(
+      filter: GlassDecoration.glassBlur,
+      child: Container(
+        decoration: GlassDecoration.card(isDark: context.isDark, radius: 20),
+        child: child,
+      ),
+    ),
   );
 }
 
