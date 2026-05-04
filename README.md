@@ -8,9 +8,6 @@
 <p><em>A free, open-source VPN client for Android with smart routing.</em></p>
 
 <p>
-  <a href="https://github.com/your-org/FlClashR/actions">
-    <img src="https://img.shields.io/github/actions/workflow/status/your-org/FlClashR/build.yml?style=flat-square&label=build" alt="Build Status" />
-  </a>
   <a href="https://github.com/your-org/FlClashR/releases">
     <img src="https://img.shields.io/github/v/release/your-org/FlClashR?style=flat-square&color=00703C" alt="Release" />
   </a>
