@@ -1,3 +1,19 @@
+## FlClashR 2026-05-04 (lib.go Port→Callback fix)
+
+- fix(core): `lib.go` — remove `ActionResult.Port` references (3 errors at lines 56, 72, 83)
+- refactor(core): `send()` now reads port via `portFromCallback(result.Callback)` instead of `result.Port`
+- refactor(core): `invokeAction` stores heap-allocated `int64` port in `ActionResult.Callback unsafe.Pointer`
+- refactor(core): `sendMessage` uses same Callback pattern for `messagePort`
+- chore: all other `ActionResult{}` literals in `server.go` were already clean (no Port field)
+
+## FlClashR 2026-05-04 (upstream sync)
+
+- chore(ci): bump `actions/setup-go` v5→v6, `actions/upload-artifact` v4→v5, `actions/download-artifact` v4→v5 in `build-android.yml` and `build.yaml`
+- refactor(core): `ActionResult.Port int64` replaced with `Callback unsafe.Pointer` (tagged `json:"-"`) — no Dart-side changes needed, boundary is JSON not raw memory
+- feat(core): add `getCoreVersionMethod` constant + handler in `handleAction` (`result.success(constant.Version)`) — exposes Mihomo version via FFI to Dart
+- chore(core): add `unsafe` and `github.com/metacubex/mihomo/constant` imports to `action.go`
+- skip: upstream `build-core.yaml` — not applicable (we embed .so in APK, no separate core binary release)
+
 ## FlClashR 2026-05-04 (session patch)
 
 - fix: VPN start crash "VPN options data is null or empty" — `service.dart` now null-guards `getAndroidVpnOptions()` and throws descriptive Exception before calling platform channel
