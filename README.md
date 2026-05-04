@@ -1,312 +1,198 @@
-<div>
+<div align="center">
 
-[**English**](README_EN.md)
+<h1>
+  FlClashR
+</h1>
+
+<p><strong>Свободный, открытый VPN-клиент для Android со смарт-маршрутизацией</strong></p>
+<p><em>A free, open-source VPN client for Android with smart routing.</em></p>
+
+<p>
+  <a href="https://github.com/your-org/FlClashR/actions">
+    <img src="https://img.shields.io/github/actions/workflow/status/your-org/FlClashR/build.yml?style=flat-square&label=build" alt="Build Status" />
+  </a>
+  <a href="https://github.com/your-org/FlClashR/releases">
+    <img src="https://img.shields.io/github/v/release/your-org/FlClashR?style=flat-square&color=00703C" alt="Release" />
+  </a>
+  <img src="https://img.shields.io/badge/platform-Android%206%2B-00ADEE?style=flat-square" alt="Platform: Android 6+" />
+  <img src="https://img.shields.io/badge/flutter-3.32%2B-A0E720?style=flat-square" alt="Flutter 3.32+" />
+  <a href="LICENSE">
+    <img src="https://img.shields.io/badge/license-GPL--3.0-42E3B4?style=flat-square" alt="GPL-3.0" />
+  </a>
+</p>
+
+<hr/>
 
 </div>
 
-## FlClashX
+## ✨ Возможности / Features
 
-[![Downloads](https://img.shields.io/github/downloads/pluralplay/FlClashX/total?style=flat-square&logo=github)](https://github.com/pluralplay/FlClashX/releases/)
-[![Last Version](https://img.shields.io/github/release/pluralplay/FlClashX/all.svg?style=flat-square)](https://github.com/pluralplay/FlClashX/releases/)
-[![License](https://img.shields.io/github/license/pluralplay/FlClashX?style=flat-square)](LICENSE)
+| Функция | Описание |
+|---|---|
+| 📥 **Импорт подписок** | Поддержка Clash YAML, Base64, VMess/VLess/SS/Trojan URI |
+| 🌍 **Авто-выбор сервера** | Пинг всех прокси при запуске, автоматически подключается к самому быстрому |
+| 🔄 **Авто-обновление** | Фоновое обновление подписки раз в 24 часа |
+| 🇷🇺 **Россия-пресет** | Умная маршрутизация: Telegram, YouTube, WhatsApp, Instagram — через VPN; остальное — напрямую |
+| 🚫 **QUIC-блокировка** | Форсирует TCP для прокси-трафика (QUIC/HTTP3 режется на UDP:443) |
+| 🌙 **Тёмная / светлая тема** | Авто-следует настройке устройства, кастомная палитра (Emerald, Spring, Sky, Arctic) |
+| 🔋 **Экономия батареи** | Маршрутизирует только нужный трафик; 95% соединений идут напрямую |
+| 🔔 **Уведомление** | "Интернет сейчас свободнее" с кнопками **Отключить** и **Переподключить** |
 
-[![Channel](https://img.shields.io/badge/Telegram-Chat-blue?style=flat-square&logo=telegram)](https://t.me/FlClashX)
+---
 
-Форк многоплатформенного прокси-клиента FlClash на основе ClashMeta, простого и удобного в использовании, с открытым исходным кодом и без рекламы.
+## 📸 Скриншоты / Screenshots
 
-Десктопный вид:
+<div align="center">
+<table>
+<tr>
+  <td align="center">
+    <!-- screenshot: главный экран светлая тема -->
+    <img src="docs/screenshots/home_light.png" width="200" alt="Home — Light" />
+    <br/><sub>Главный экран (светлая)</sub>
+  </td>
+  <td align="center">
+    <!-- screenshot: главный экран тёмная тема -->
+    <img src="docs/screenshots/home_dark.png" width="200" alt="Home — Dark" />
+    <br/><sub>Главный экран (тёмная)</sub>
+  </td>
+  <td align="center">
+    <!-- screenshot: настройки сервисов (Россия-пресет) -->
+    <img src="docs/screenshots/services.png" width="200" alt="Services" />
+    <br/><sub>Сервисы / Пресет</sub>
+  </td>
+</tr>
+</table>
+</div>
 
-<p style="text-align: center;">
-    <img alt="desktop" src="snapshots/desktop.gif">
-</p>
+---
 
-Мобильный вид:
+## 🚀 Быстрый старт / Quick Start
 
-<p style="text-align: center;">
-    <img alt="mobile" src="snapshots/mobile.gif">
-</p>
+### Установить APK (Release)
 
-## Добавленный функционал
+1. Скачайте последний APK из [Releases](https://github.com/your-org/FlClashR/releases).
+2. Разрешите установку из неизвестных источников в настройках Android.
+3. Установите APK, откройте приложение.
+4. Нажмите **«Импорт»** и вставьте ссылку на подписку (Clash YAML URL или URI).
+5. Нажмите большую кнопку — VPN запустится и выберет быстрейший сервер автоматически.
 
-🛠️ Исправлены стандартные настройки: режим поиска процессов вкл, режим tun вкл, режим системного прокси выкл, режим отображения списка прокси list, изменена работа камеры при добавлении подписки через QR.
+### Собрать из исходников / Build from Source
 
-📱 **Поддержка 120Гц дисплеев на Android:** Добавлена поддержка высокочастотных дисплеев (120Гц) на устройствах Android для более плавных анимаций и прокрутки.
-
-🗑️ **Очистка данных приложения:** Добавлена кнопка "Очистить данные" в настройках приложения, которая удаляет все профили из папки profiles. Полезно для устранения неполадок или сброса приложения.
-
-🇷🇺 Добавлен русский язык в установщик и переработана локаль в приложении
-
-✈️ Передача HWID в панель (Работает только с <a href="https://github.com/remnawave/panel">Remnawave</a>)
-
-💻 Добавлен новый виджет "Анонсы". Передаёт анонсы из панели в виджет. (Работает только с <a href="https://github.com/remnawave/panel">Remnawave</a>)
-
-📺 Оптимизация управления на Android TV
-
-- добавлена кнопка "Вставить" для меню добавления подписки по ссылке
-- добавлена кнопка выбора профиля
-- добавлена передача профиля с мобильного приложения через QR-код
-
-💻 macOS - приложение в нативной строке состояния (status bar) вместо оконного интерфейса.
-
-🪪 Переработана карточка профиля на странице профиля и виджет на главной:
-
-- Используется индикатор объёма трафика с изменением цвета (не отображается, если трафик неограничен).
-- Отображается дата окончания подписки (если год — 2099, выводится «Ваша подписка вечная»).
-- Добавлена новая кнопка «Поддержка» в профиле, которая подтягивает supportUrl с панели.
-- Параметр autoupdateinterval для профиля теперь корректно передаётся с панели.
-- Добавлен виджет "MetaInfo". Передаёт параметры с подписки на виджет. Сколько трафика осталось, когда заканчивается подписка, имя профиля, и крупно отображает сколько дней до окончании подписки осталось (за 3 дня до окончания).
-- Добавлен виджет "serviceInfo". Передаёт название вашего сервиса. Можно передать дополнительно хедер `flclashx-servicelogo` для кастомного лого (поддерживается ссылка svg/png), дополнительно по клику открыватеся ссылка на поддержку (supportURL)
-- Добавлен виджет "changeServerButton". По клику перенаправляет на страницу прокси.
-
-### Добавлен парсинг кастомных хедеров со страницы подписки:
-
-<details>
-<summary><strong>flclashx-widgets</strong></summary>
-
-Выстраивает виджеты в порядке, полученным с подписки
-
-|       Значение       | Виджет                                                      |
-| :------------------: | ----------------------------------------------------------- |
-|      `announce`      | Анонсы                                                      |
-|    `networkSpeed`    | Скорость сети                                               |
-|   `outboundModeV2`   | Режим работы прокси (новый вид)                             |
-|    `outboundMode`    | Режим работы прокси (старый вид)                            |
-|    `trafficUsage`    | Использование трафика                                       |
-|  `networkDetection`  | Определение локации и IP                                    |
-|     `tunButton`      | Кнопка TUN (только Desktop)                                 |
-|     `vpnButton`      | Кнопка VPN (только Android)                                 |
-| `systemProxyButton`  | Кнопка системного прокси (только Desktop)                   |
-|     `intranetIp`     | Локальный IP-адрес                                          |
-|     `memoryInfo`     | Использование памяти                                        |
-|      `metainfo`      | Информация о подписке                                       |
-| `changeServerButton` | Кнопка смены сервера                                        |
-|    `serviceInfo`     | Информация о сервисе (работает только с header flclashx-servicename) |
-
-Использование:
+**Требования:**
+- Flutter ≥ 3.32.0
+- Android NDK 27.0.12077973
+- Java 17
+- Go 1.22+ (для пересборки `libclash.so`, опционально)
 
 ```bash
-flclashx-widgets: announce,metainfo,outboundModeV2,networkDetection
-```
-</details>
+# 1. Клонировать
+git clone https://github.com/your-org/FlClashR.git
+cd FlClashR
 
-<details>
-<summary><strong>flclashx-view</strong></summary>
+# 2. Зависимости
+flutter pub get
 
-Настраивает вид страницы прокси, полученным с подписки
+# 3. Собрать APK
+flutter build apk --release
 
-| Значение | Описание                            | Возможные значения                |
-| :------: | ----------------------------------- | --------------------------------- |
-|  `type`  | Режим отображения                   | `list`,`tab`                      |
-|  `sort`  | Тип сортировки                      | `none`,`delay`,`name`             |
-| `layout` | Макет                               | `loose`,`standard`,`tight`        |
-|  `icon`  | Стиль иконок (для list-отображения) | `none`,`icon`          |
-|  `card`  | Размер карточки                     | `expand`,`shrink`,`min`,`oneline` |
-
-Использование:
-
-```bash
-flclashx-view: type:list; sort:delay; layout:tight; icon:icon; card:shrink
-```
-</details>
-
-<details>
-<summary><strong>flclashx-custom</strong></summary>
-
-Управляет состоянием применения стилей для Dashboard и ProxyView
-
-| Значение | Описание                                                |
-| :------: | ------------------------------------------------------- |
-|  `add`   | Стиль страницы прокси и виджеты применяются только при первом добавлении подписки |
-| `update` | Стиль страницы прокси и виджеты применяются каждый раз при обновлении подписки    |
-
-Использование:
-
-```bash
-flclashx-custom: update
-```
-</details>
-
-<details>
-<summary><strong>flclashx-denywidgets</strong></summary>
-
-При true — запрещает редактировать страницу Dashboard. Имеет значение true/false.
-
-Использование:
-
-```bash
-flclashx-denywidgets: true
-```
-</details>
-
-<details>
-<summary><strong>flclashx-servicename</strong></summary>
-
-Название вашего сервиса, отображаемое в виджете ServiceInfo.
-
-Использование:
-
-```bash
-flclashx-servicename: FlClashX
-```
-</details>
-
-<details>
-<summary><strong>flclashx-servicelogo</strong></summary>
-
-Ваш логотип, используемый в виджете ServiceInfo (работает только с активным хедером flclashx-servicename). Поддерживает png/svg.
-
-Использование:
-
-```bash
-flclashx-servicelogo: https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/remnawave.svg
-```
-</details>
-
-<details>
-<summary><strong>flclashx-serverinfo</strong></summary>
-
-Название прокси-группы для отображения в виджете ChangeServerButton. Виджет показывает активный сервер из указанной группы с флагом страны, пингом и кнопкой для быстрого переключения. Если не передаётся — работает фолбек на «Изменить сервер»
-
-**Отображаемые элементы:**
-- Флаг страны (автоматически извлекается из имени прокси, если отсутствует — фолбек иконка)
-- Название активного сервера
-- Текущий пинг с цветовой индикацией (зелёный < 600ms, оранжевый >= 600ms, красный — timeout)
-- Кнопка быстрого перехода на страницу прокси
-
-Использование:
-
-```bash
-flclashx-serverinfo: Proxy
-```
-</details>
-
-<details>
-<summary><strong>flclashx-background</strong></summary>
-
-Устанавливает пользовательское фоновое изображение для приложения. Укажите прямую ссылку на изображение.
-
-**Рекомендации для изображения:**
-- Формат: PNG, JPG или WebP
-- Разрешение: 1920x1080 или выше для десктопа, 1080x1920 для мобильных устройств
-- Размер файла: Желательно до 2МБ для лучшей производительности
-- Содержание: Используйте изображения с тонкими узорами или градиентами; избегайте слишком ярких или загруженных изображений
-- Контраст: Обеспечьте хорошую читаемость текста на фоне
-
-Использование:
-
-```bash
-flclashx-background: https://example.com/background.jpg
-```
-</details>
-
-<details>
-<summary><strong>flclashx-settings</strong></summary>
-
-Управление настройками приложения через хедер (с возможностью переопределения со стороны клиента). По умолчанию все параметры выключены. Если вы передаёте параметр, то он будет включён. Если не передаёте — останется выключенным.
-
-|   Параметр    | Описание                                                 | По умолчанию |
-| :-----------: | -------------------------------------------------------- | :----------: |
-|  `minimize`   | Сворачивать приложение при выходе вместо закрытия        | ❌ Выкл      |
-|   `autorun`   | Запускать приложение при старте системы                  | ❌ Выкл      |
-| `shadowstart` | Запускать приложение свернутым в трей                    | ❌ Выкл      |
-|  `autostart`  | Автоматически запускать прокси при запуске приложения    | ❌ Выкл      |
-| `autoupdate`  | Автоматически проверять обновления приложения            | ❌ Выкл      |
-
-Переопределение на стороне клиента: Пользователи могут включить «Переопределить настройки провайдера» в настройках приложения, чтобы применять свою локальную конфигурацию вместо настроек из подписки.
-
-Использование:
-
-```bash
-flclashx-settings: minimize, autorun, shadowstart, autostart, autoupdate
-```
-</details>
-
-<details>
-<summary><strong>flclashx-globalmode</strong></summary>
-
-Данный хедер при FALSE позволяет скрыть все настройки режима прокси из клиента (трей, страница прокси, виджеты смены режима)
-
-Использование:
-```bash
-flclashx-globalmode: false
-```
-</details>
-
-<details>
-<summary><strong>flclashx-hex</strong></summary>
-
-Данный хедер позволяет настроить тему в приложении, возможность передать основной цвет, вариант, и выбрать "Чисто черный режим" параметром `pureBlack`
-
-Варианты:
-|   Вариант    | Название|
-| :-----------: | ------ |
-|  `tonalSpot`   | Тональный акцент|
-|   `fidelity`   | Точная передача |
-| `monochrome` | Монохром |
-|  `neutral`  | Нейтральные |
-| `vibrant`  | Яркие |
-| `expressive`  | Экспрессивные |
-| `content`  | Контентная тема |
-| `rainbow`  | Радужные |
-| `fruitSalad`  | Фруктовый микс |
-
-Использование:
-```bash
-flclashx-hex: FF5733
-flclashx-hex: FF5733:vibrant
-flclashx-hex: FF5733:vibrant:pureblack
-```
-Так-же можно параметры использовать по отдельности:
-```bash
-flclashx-hex: FF5733
-flclashx-hex: vibrant
-flclashx-hex: pureblack
-```
-Список HEX-кодов стандартных тем приложений приложу чуть позже.
-</details>
-
-### Переопределение настроек конфигурации
-По умолчанию следующие параметры конфигурации, полученные от подписки, **не переопределяются** клиентом:
-
-- `allow-lan` - Разрешить подключения из локальной сети
-- `ipv6` - Включить поддержку IPv6
-- `find-process-mode` - Режим поиска процессов
-- `tun-stack` - Сетевой стек режима TUN
-- `mixed-port` - Смешанный порт для HTTP/SOCKS прокси
-
-**Переопределение на стороне клиента:** Пользователи могут включить "Переопределить настройки провайдера" или "Переопределить сетевые настройки" в настройках приложения, чтобы применять свою локальную конфигурацию вместо настроек из подписки. Это полезно, когда нужны кастомные сетевые настройки.
-
-## Использование
-
-### Linux
-
-⚠️ Перед использованием убедитесь, что установлены следующие зависимости:
-
-```bash
- sudo apt-get install libayatana-appindicator3-dev
- sudo apt-get install libkeybinder-3.0-dev
+# 4. Установить на устройство
+adb install build/app/outputs/flutter-apk/app-release.apk
 ```
 
-### Android
+> **Примечание:** `libclash.so` включён в репозиторий предсобранным. Если вы меняете Go-ядро (`core/`), пересоберите `.so` командой `make android` и скопируйте в `android/app/src/main/jniLibs/`.
 
-Поддерживаются следующие действия:
+---
 
-```bash
- com.follow.clashx.action.START
+## ⚙️ Настройка / Configuration
 
- com.follow.clashx.action.STOP
+### Форматы подписок
 
- com.follow.clashx.action.CHANGE
+FlClashR поддерживает несколько форматов:
+
+- **Clash YAML** — прямой URL на файл конфигурации
+- **Base64-список** — стандартный формат большинства платных VPN-сервисов
+- **Одиночные URI** — `vmess://...`, `vless://...`, `ss://...`, `trojan://...`, `hysteria2://...`
+
+### Россия-пресет
+
+В разделе **Сервисы** вы можете включить/выключить маршрутизацию через прокси для каждого сервиса:
+
+| Сервис | По умолчанию | Почему через прокси |
+|--------|:---:|---|
+| YouTube | ✅ | Заблокирован с 2024 |
+| Telegram | ✅ | Блокировки по IP/DPI |
+| WhatsApp | ✅ | Периодические помехи |
+| Instagram | ⬜ | Заблокирован, но опционально |
+| X (Twitter) | ⬜ | Заблокирован, опционально |
+
+Весь остальной трафик идёт **напрямую** (`MATCH,DIRECT`) — российские сайты работают без VPN.
+
+---
+
+## 🏗 Архитектура / Architecture
+
+```
+┌─────────────────────────────────┐
+│       Flutter UI (Dart)         │
+│  SimpleHomeView, SettingsView   │
+│  Riverpod providers             │
+└──────────┬──────────────────────┘
+           │ FFI (lib/clash/lib.dart)
+           ▼
+┌─────────────────────────────────┐
+│    Clash/Mihomo Go Core         │
+│  libclash.so (prebuilt)         │
+│  core/*.go — DO NOT MODIFY      │
+└──────────┬──────────────────────┘
+           │ TUN fd via VpnService
+           ▼
+┌─────────────────────────────────┐
+│   Android VpnService (Kotlin)   │
+│  FlClashXVpnService             │
+│  VpnPlugin, ServicePlugin       │
+└─────────────────────────────────┘
 ```
 
-## Скачать
+**Ключевые принципы:**
+- FFI вызовы только через `_MainFFIHandler` в главном движке
+- Сервисный изолят (`_service()`) минимален — никакого FFI
+- Порядок правил: специфичные → QUIC-блок → `MATCH,DIRECT` (всегда последним)
+- Авто-выбор сервера: batch ping 20 прокси, fallback при таймауте 7с
 
-<a href="https://github.com/pluralplay/FlClashX/releases"><img alt="Get it on GitHub" src="snapshots/get-it-on-github.svg" width="200px"/></a>
+---
 
-## Star
+## 🤝 Участие / Contributing
 
-<p style="text-align: center;">
-Самый простой способ поддержать разработчиков — нажать на звездочку (⭐) в верхней части страницы.<br>
-Если хотите поддержать копеечкой, то можно <a href="https://t.me/tribute/app?startapp=dtyh">сделать это тут.</a></p>
+1. Форкните репозиторий
+2. Создайте ветку: `git checkout -b feature/my-feature`
+3. Прочитайте `.claude/RULES.md` — там описаны критические ограничения архитектуры
+4. Сделайте коммит: `git commit -m 'feat: my feature'`
+5. Пуш: `git push origin feature/my-feature`
+6. Откройте Pull Request
 
-**TON USDT:** `UQDSfrJ_k1BdsknhdR_zj4T3Is3OdMylD8PnDJ9mxO35i-TE`
+**Важно:** Не трогайте `core/*.go`, `lib/main.dart _service()`, `lib/clash/lib.dart` FFI-архитектуру без обсуждения в issue.
+
+---
+
+## 📄 Лицензия / License
+
+Распространяется под лицензией **GNU GPL v3**. Подробности в файле [LICENSE](LICENSE).
+
+---
+
+## 🙏 Благодарности / Credits
+
+- **[FlClashX](https://github.com/chen08209/FlClash)** — оригинальный Flutter Clash клиент
+- **[Mihomo (Clash Meta)](https://github.com/MetaCubeX/mihomo)** — Go VPN ядро
+- **[RoscomVPN](https://github.com/roscomvpn)** — правила маршрутизации для российских блокировок
+- Сообщество разработчиков open-source VPN-инструментов
+
+---
+
+<div align="center">
+
+Made with ❤️ for free internet
+
+<sub>FlClashR — потому что свободный интернет должен быть у каждого</sub>
+
+</div>
