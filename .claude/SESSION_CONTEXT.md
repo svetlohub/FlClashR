@@ -210,3 +210,29 @@ Session Instructions for Claude
 ### Outstanding
 - `core/*.go` changes require rebuilding `libclash.so` before they take effect at runtime
 - `getCoreVersion` Dart-side caller not yet wired — the Go handler is ready but no Dart code calls it yet
+
+---
+## Session: 2026-05-04 — lib.go Port→Callback fix
+
+### Problem
+Build errors after upstream `ActionResult.Port int64` → `Callback unsafe.Pointer` change:
+- `result.Port undefined` (line 56)
+- `unknown field Port in struct literal` (lines 72, 83)
+
+### Root Cause Analysis
+`lib.go::send()` used `result.Port` as the Dart `SendPort` ID for `bridge.SendToPort()`.
+`invokeAction` stored the port integer directly in `ActionResult.Port`.
+`sendMessage` stored `messagePort` in `ActionResult.Port`.
+
+### Fix Applied (`core/lib.go`)
+- Added `portFromCallback(cb unsafe.Pointer) int64` helper — dereferences the stored int64 pointer
+- `send()` now: `port := portFromCallback(result.Callback); bridge.SendToPort(port, ...)`
+- `invokeAction`: `portPtr := new(int64); *portPtr = i; result := ActionResult{..., Callback: unsafe.Pointer(portPtr)}`
+- `sendMessage`: same `portPtr` pattern using `messagePort`
+- The heap-allocated `int64` is safe — Go GC will not collect it while `unsafe.Pointer` points to it (per Go unsafe rules: a `unsafe.Pointer` holding a `*int64` keeps it live)
+
+### Verified
+- No `Port` field references remain in any `core/*.go` file (excluding legitimate net.Port fields)
+- `server.go` (non-cgo path) was already clean — defines its own `send()` separately
+- `action.go` `success()/error()` → `result.send()` call chain unchanged
+- Dart side unaffected — ActionResult delivered as JSON, `Callback` tagged `json:"-"`
