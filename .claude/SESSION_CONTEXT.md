@@ -186,3 +186,27 @@ Session Instructions for Claude
 - Theme auto: fresh install → should follow device light/dark
 - Notification "Переподключить" → VPN reconnects within ~3s
 - Telegram calls/video after new IP ranges added
+
+---
+## Session: 2026-05-04 — upstream sync (3 changes)
+
+### Analysis performed
+- `Port int64` in Go `ActionResult` is NOT a raw-memory FFI field — boundary is JSON (`result.Json()`). Dart `ActionResult` model has no `Port` field. Change is safe.
+- `getCoreVersionMethod` is pure additive — no conflicts.
+- Upstream `build-core.yaml` (separate Go core release) — NOT applicable to us; we ship `.so` inside APK.
+
+### Changes Applied
+1. **`core/action.go`** — `ActionResult.Port int64` → `Callback unsafe.Pointer` (json:"-"); added `getCoreVersion` case; added `unsafe` + `mihomo/constant` imports
+2. **`core/constant.go`** — added `getCoreVersionMethod Method = "getCoreVersion"`
+3. **`.github/workflows/build-android.yml`** — `setup-go@v5→v6`, `upload-artifact@v4→v5`
+4. **`.github/workflows/build.yaml`** — `setup-go@v5→v6`, `upload-artifact@v4→v5`, `download-artifact@v4→v5`
+
+### Verified Safe
+- Dart `ActionResult.fromJson()` deserialises only `id`, `method`, `data`, `code` — `Callback` (json:"-") never appears in wire JSON
+- No Dart FFI struct allocation of `ActionResult` anywhere — all via JSON decode
+- `_service()` entrypoint untouched
+- `lib/clash/lib.dart` FFI architecture untouched
+
+### Outstanding
+- `core/*.go` changes require rebuilding `libclash.so` before they take effect at runtime
+- `getCoreVersion` Dart-side caller not yet wired — the Go handler is ready but no Dart code calls it yet
