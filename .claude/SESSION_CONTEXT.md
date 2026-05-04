@@ -146,3 +146,43 @@ Session Instructions for Claude
 - YAML import: test with malformed YAML link, HTML response, valid sub
 - Telegram IPv6 — verify `IP-CIDR6` rule is accepted by Clash version in use
 - Instagram via Russia preset: enable in UI, verify reels/stories load
+
+---
+## Session: 2026-05-04 — 5-task batch
+
+### Changes Applied
+
+1. **Task 1 — VPN start crash guard** (`lib/plugins/service.dart`, `lib/views/simple_home.dart`, `lib/state.dart`)
+   - `service.dart startVpn()`: null-guard on `getAndroidVpnOptions()` — throws descriptive Exception before hitting platform channel. Also guards `ipv4Address.isEmpty`.
+   - `simple_home.dart _toggle()`: pre-flight check — if `currentProfileIdProvider == null` on start attempt, shows RU snackbar and returns early. Friendly message for "VPN configuration missing" errors.
+   - `state.dart handleStart()`: comment added — config NOT wiped on start failure (only rethrows, never clears profileId).
+
+2. **Task 2 — Theme auto not working** (`lib/models/config.dart`)
+   - Changed `@Default(ThemeMode.dark)` → `@Default(ThemeMode.system)` in `ThemeProps`.
+   - `application.dart` already wires `themeMode: themeProps.themeMode` + both themes — no change needed there.
+   - New users now auto-follow device setting; existing users who already saved a preference are unaffected (serialised value takes priority over default).
+
+3. **Task 3 — VPN notification text + buttons** (`android/.../BaseServiceInterface.kt`, `android/.../TempActivity.kt`)
+   - `BaseServiceInterface.kt`: `setContentTitle("Интернет сейчас свободнее")`, removed unused `stopText` var, added `addAction("Переподключить", RECONNECT)` alongside existing `addAction("Отключить", STOP)`.
+   - `TempActivity.kt`: added `RECONNECT` action handler → `GlobalState.handleStop()` + `GlobalState.handleStart()`.
+
+4. **Task 4 — Telegram not routing** (`lib/common/russia_preset.dart`)
+   - Added missing DC subnets: `91.108.12.0/22` (DC2-Media), `91.108.16.0/22` (DC3), `91.108.36.0/22` (DC4), `185.76.144.0/22` (CDN).
+   - Added IPv6 range: `2001:67c:4e8:f003::/64`.
+   - Removed broad `/16` supernet (91.108.0.0/16) — replaced with specific /22 blocks.
+   - Added `keywords: ['telegram']` fallback for unresolved subdomains.
+
+5. **Task 5 — README.md** (`README.md`)
+   - Full bilingual (RU/EN) README: badges, features table, screenshots placeholders, quick start, architecture diagram, contributing, credits.
+
+### Verified Not Touched
+- `core/*.go` — untouched
+- `lib/main.dart _service()` — untouched
+- `lib/clash/lib.dart` FFI — untouched
+- Rule ordering — maintained
+
+### Outstanding / Needs Test
+- VPN start without import → should show RU snackbar, not crash
+- Theme auto: fresh install → should follow device light/dark
+- Notification "Переподключить" → VPN reconnects within ~3s
+- Telegram calls/video after new IP ranges added
