@@ -138,6 +138,8 @@ class GlobalState {
       await service?.startVpn();
       await CrashLogger.instance.log('handleStart: startVpn done');
     } catch (e, st) {
+      // Preserve last-known-good config: do NOT wipe currentProfileId on start failure.
+      // Only log and rethrow — caller (updateStatus) handles stop/cleanup.
       await CrashLogger.instance.logError(e, st, context: 'handleStart.startVpn');
       rethrow;
     }
