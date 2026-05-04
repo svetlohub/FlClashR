@@ -1,3 +1,12 @@
+## FlClashR 2026-05-04 (session patch)
+
+- fix: VPN start crash "VPN options data is null or empty" — `service.dart` now null-guards `getAndroidVpnOptions()` and throws descriptive Exception before calling platform channel
+- fix: `_toggle` in SimpleHomeView pre-checks `currentProfileIdProvider != null` before starting — shows RU error snackbar instead of crashing
+- fix: theme default changed from `ThemeMode.dark` to `ThemeMode.system` in `ThemeProps` — app now auto-follows device light/dark setting on fresh install
+- feat: VPN notification title → "Интернет сейчас свободнее"; added "Переподключить" action button (RECONNECT in TempActivity → handleStop + handleStart)
+- fix: Telegram routing — added missing DC subnets (91.108.12.0/22, 91.108.16.0/22, 91.108.36.0/22, 185.76.144.0/22, 2001:67c:4e8:f003::/64); removed broad /16 supernet; added keyword fallback
+- docs: new bilingual README.md with badges, features, quick-start, architecture diagram, contributing guide
+
 ## FlClashR 2026-05-03 (session patch)
 
 - fix: subscription import spinner never stops when ScaffoldMessenger ctx is stale — use `maybeOf` + nullable ctrl with guarded close
