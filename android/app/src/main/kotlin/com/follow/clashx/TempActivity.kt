@@ -19,6 +19,12 @@ class TempActivity : Activity() {
             wrapAction("CHANGE") -> {
                 GlobalState.handleToggle()
             }
+
+            wrapAction("RECONNECT") -> {
+                // Stop then start — reconnects to potentially faster server
+                GlobalState.handleStop()
+                GlobalState.handleStart()
+            }
         }
         finishAndRemoveTask()
     }
