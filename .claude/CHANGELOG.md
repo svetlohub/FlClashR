@@ -1,3 +1,11 @@
+## FlClashR 2026-05-05 (4-task session)
+
+- fix(rules): "proxy [PROXY] not found" crash — `state.dart patchRawConfig` now calls `_resolveProxyGroupName()` to detect real proxy group name from `rawConfig['proxy-groups']` before injecting override rules; replaces `,PROXY,` → `,<real name>,` in all rule strings
+- fix(rules): `_resolveProxyGroupName` priority: (1) group named "select"/"proxy", (2) url-test/fallback type, (3) first group, (4) literal "PROXY" fallback
+- fix(ui): snackbar text contrast — all `_snack()` calls now set `TextStyle(color: Colors.black)` on success/error snackbars (lime/orange backgrounds)
+- feat(notification): `BaseServiceInterface.kt` — added `setContentText("Интернет стал немного свободнее")` below existing title
+- fix(toggles): `_loadFromProfile()` no longer checks `r.contains('PROXY')` to detect enabled services (breaks after group name substitution); now checks `!r.endsWith(',DIRECT')` instead
+
 ## FlClashR 2026-05-04 (lib.go Port→Callback fix)
 
 - fix(core): `lib.go` — remove `ActionResult.Port` references (3 errors at lines 56, 72, 83)
