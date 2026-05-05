@@ -534,14 +534,67 @@ class GlobalState {
 
     final overrideData = profile.overrideData;
     if (overrideData.enable && config.scriptProps.currentScript == null) {
+      // ── Resolve "PROXY" placeholder → real proxy group name ────────────────
+      // Rules from russia_preset use the literal string "PROXY" as the target
+      // group name. But imported subscriptions name their groups differently
+      // (e.g. "♻️ Auto", "🔰 Select", "Proxy"). We detect the best group name
+      // from the profile's proxy-groups list and substitute it in all rules.
+      final resolvedGroupName = _resolveProxyGroupName(rawConfig);
+
+      List<String> resolveRules(List<String> raw) {
+        if (resolvedGroupName == 'PROXY') return raw;
+        return raw
+            .map((r) => r.replaceAll(',PROXY,', ',$resolvedGroupName,')
+                         .replaceAll(',PROXY', ',$resolvedGroupName'))
+            .toList();
+      }
+
       if (overrideData.rule.type == OverrideRuleType.override) {
-        rules = overrideData.runningRule;
+        rules = resolveRules(overrideData.runningRule);
       } else {
-        rules = [...overrideData.runningRule, ...rules];
+        rules = [...resolveRules(overrideData.runningRule), ...rules];
       }
     }
     rawConfig["rule"] = rules;
     return rawConfig;
+  }
+
+  /// Determines the best outbound proxy group name from a raw Clash config map.
+  /// Imported subscriptions use various naming conventions; we prefer (in order):
+  ///   1. A group whose name contains "select" or "proxy" (case-insensitive)
+  ///   2. A group of type "url-test" or "fallback" (auto-select groups)
+  ///   3. The very first proxy-group entry
+  ///   4. Fallback: the literal "PROXY" (works if the profile already uses it)
+  String _resolveProxyGroupName(Map<String, dynamic> rawConfig) {
+    final groups = rawConfig['proxy-groups'];
+    if (groups == null || groups is! List || groups.isEmpty) return 'PROXY';
+
+    // Priority 1: group with name containing "select" or "proxy" (case-insensitive)
+    for (final g in groups) {
+      if (g is! Map) continue;
+      final name = (g['name'] as String?) ?? '';
+      final nameLower = name.toLowerCase();
+      if (nameLower.contains('select') || nameLower == 'proxy') {
+        return name;
+      }
+    }
+
+    // Priority 2: url-test / fallback / load-balance (auto-select types)
+    for (final g in groups) {
+      if (g is! Map) continue;
+      final type = ((g['type'] as String?) ?? '').toLowerCase();
+      if (type == 'url-test' || type == 'fallback' || type == 'load-balance') {
+        return (g['name'] as String?) ?? 'PROXY';
+      }
+    }
+
+    // Priority 3: first group entry
+    final first = groups.first;
+    if (first is Map) {
+      return (first['name'] as String?) ?? 'PROXY';
+    }
+
+    return 'PROXY';
   }
 
   Future<Map<String, dynamic>> getProfileConfig(String profileId) async {
