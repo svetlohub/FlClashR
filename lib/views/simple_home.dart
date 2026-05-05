@@ -292,7 +292,7 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
       Duration dur = const Duration(seconds: 4)}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
+      content: Text(msg, style: const TextStyle(color: Colors.black)),
       backgroundColor: error ? _orange : _lime,
       duration: dur,
     ));
@@ -511,7 +511,7 @@ class _SettingsState extends ConsumerState<SettingsView> {
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg),
+      content: Text(msg, style: const TextStyle(color: Colors.black)),
       backgroundColor: error ? _orange : _lime,
     ));
   }
@@ -1102,10 +1102,14 @@ class _ServicesViewState extends ConsumerState<ServicesView> {
     final od = profile.overrideData;
     if (!od.enable) return;
     final ruleValues = od.rule.rules.map((r) => r.value).toSet();
-    // Detect which services are enabled by checking if their first domain is in rules
+    // Detect which services are enabled by checking if their first domain appears
+    // in any rule that is NOT a DIRECT rule. We cannot rely on the literal "PROXY"
+    // string here because patchRawConfig substitutes it with the real group name
+    // at apply time — the overrideData still stores the original "PROXY" placeholder.
     for (final svc in russiaServices) {
       final firstDomain = svc.domains.first;
-      _states[svc.id] = ruleValues.any((r) => r.contains(firstDomain) && r.contains('PROXY'));
+      _states[svc.id] = ruleValues.any((r) =>
+          r.contains(firstDomain) && !r.endsWith(',DIRECT'));
     }
   }
 
@@ -1121,7 +1125,8 @@ class _ServicesViewState extends ConsumerState<ServicesView> {
     setState(() => _dirty = false);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('✓ Настройки применены'),
+        content: Text('✓ Настройки применены',
+            style: TextStyle(color: Colors.black)),
         backgroundColor: _lime,
       ),
     );
