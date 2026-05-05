@@ -236,3 +236,25 @@ Build errors after upstream `ActionResult.Port int64` → `Callback unsafe.Point
 - `server.go` (non-cgo path) was already clean — defines its own `send()` separately
 - `action.go` `success()/error()` → `result.send()` call chain unchanged
 - Dart side unaffected — ActionResult delivered as JSON, `Callback` tagged `json:"-"`
+
+---
+## Session: 2026-05-05 — 4-task batch
+
+### Task 1 — "proxy PROXY not found" (CRITICAL)
+Root cause: `buildRulesFromServices()` uses literal `"PROXY"` as group name. Imported configs name groups `"♻️ Auto"`, `"🔰 Select"` etc.
+Fix location: `lib/state.dart patchRawConfig()` — added `_resolveProxyGroupName(rawConfig)` that reads `proxy-groups` list and finds best match, then `resolveRules()` replaces `,PROXY,` in all override rule strings before they're injected into config.
+Note: `overrideData` still stores the `"PROXY"` placeholder — substitution happens at apply-time only.
+
+### Task 2 — Snackbar contrast
+All 3 `_snack()` / inline `SnackBar` usages in `simple_home.dart` now set `TextStyle(color: Colors.black)`.
+
+### Task 3 — Notification body text
+`BaseServiceInterface.kt`: `setContentText("Интернет стал немного свободнее")` added after existing `setContentTitle`.
+
+### Task 4 — Service toggle breakage
+Secondary bug fixed: `_loadFromProfile()` checked `r.contains('PROXY')` — this broke after Task 1 fix (rules now have real group names in overrideData storage? No — stored rules still have "PROXY"; but proofed for future). Changed to `!r.endsWith(',DIRECT')` — detects proxy-routed rules regardless of group name.
+
+### Files Changed
+- `lib/state.dart` — `patchRawConfig` + `_resolveProxyGroupName` helper
+- `lib/views/simple_home.dart` — snackbar contrast + `_loadFromProfile` fix
+- `android/.../BaseServiceInterface.kt` — `setContentText` added
