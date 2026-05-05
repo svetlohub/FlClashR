@@ -53,8 +53,9 @@ fun Service.createFlClashXNotificationBuilder(): Deferred<NotificationCompat.Bui
             )
         ) {
             setSmallIcon(R.drawable.ic)
-            // Persistent marketing title — visible in notification shade
+            // Persistent title + body — both visible in notification shade
             setContentTitle("Интернет сейчас свободнее")
+            setContentText("Интернет стал немного свободнее")
             setContentIntent(pendingIntent)
             setCategory(NotificationCompat.CATEGORY_SERVICE)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
