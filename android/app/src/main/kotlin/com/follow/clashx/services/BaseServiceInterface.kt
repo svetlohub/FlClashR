@@ -30,26 +30,26 @@ interface BaseServiceInterface {
     suspend fun startForeground(title: String, server: String?, content: String)
 }
 
-fun Service.createFlClashXNotificationBuilder(): Deferred<NotificationCompat.Builder> =
+fun Service.createRaketaNotificationBuilder(): Deferred<NotificationCompat.Builder> =
     CoroutineScope(Dispatchers.Main).async {
-        val intent = Intent(this@createFlClashXNotificationBuilder, MainActivity::class.java)
+        val intent = Intent(this@createRaketaNotificationBuilder, MainActivity::class.java)
 
         val pendingIntent = if (Build.VERSION.SDK_INT >= 31) {
             PendingIntent.getActivity(
-                this@createFlClashXNotificationBuilder,
+                this@createRaketaNotificationBuilder,
                 0,
                 intent,
                 PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
             )
         } else {
             PendingIntent.getActivity(
-                this@createFlClashXNotificationBuilder, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT
+                this@createRaketaNotificationBuilder, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT
             )
         }
 
         with(
             NotificationCompat.Builder(
-                this@createFlClashXNotificationBuilder, GlobalState.NOTIFICATION_CHANNEL
+                this@createRaketaNotificationBuilder, GlobalState.NOTIFICATION_CHANNEL
             )
         ) {
             setSmallIcon(R.drawable.ic)
