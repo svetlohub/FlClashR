@@ -1,3 +1,26 @@
+## Raketa 2026-05-06 (rebrand from FlClashR)
+
+- rebrand: all user-visible strings FlClashR/FlClashX → Raketa (22 files)
+- rebrand: app name in strings.xml → "Raketa"; notification channels: "Raketa", "Raketa_Subscription"
+- rebrand: lock file, socket path, isolate names, log prefix → Raketa* naming
+- rebrand: pubspec.yaml description updated
+- feat(icon): main screen shield icon replaced with custom _RocketIcon (CustomPainter)
+  - Active: emerald→spring gradient rocket body, sky-blue porthole, spring-yellow flame with white core, glow halo
+  - Inactive: slate-gray outline rocket
+  - Animated transition: ScaleTransition with elasticOut + FadeTransition
+- feat(icon): Android notification/tile icon (ic.xml) → white rocket silhouette
+- feat(icon): Launcher adaptive icon foreground → white rocket with emerald fins + sky porthole
+- feat(icon): Launcher adaptive icon background → deep space dark (#0D1F17) with star field
+
+## FlClashR 2026-05-06 (5-issue batch)
+
+- fix(vpn-start): await `applyProfile(silence:true)` in `updateStatus(true)` before `handleStart()` — prevents "VPN configuration is missing" when Go core hasn't loaded config yet
+- feat(preset): Russia 2026 preset now auto-applies immediately after import via `doProfileImport`; also auto-applies in `_initCore` if profile exists without overrideData
+- feat(ui): removed "Режимы" button from main screen — only "Настройки" remains
+- fix(persistence): `setProfile()` and `CurrentProfileId.onUpdate` now call `savePreferencesDebounce()` — profile and subscription key no longer lost on app force-kill (Android OOM death bypasses `paused`/`inactive` lifecycle)
+- fix(notification): `_getDefaultForegroundParams()` in `vpn.dart` now returns Russian title "Интернет сейчас свободнее" — was returning "FlClashX" which overwrote the Kotlin builder strings every second
+- fix(apk-install): `android:testOnly="false"` + `tools:replace="android:testOnly"` in AndroidManifest.xml prevents Flutter debug toolchain from injecting testOnly=true flag that triggers Play Protect warning
+
 ## FlClashR 2026-05-05 (4-task session)
 
 - fix(rules): "proxy [PROXY] not found" crash — `state.dart patchRawConfig` now calls `_resolveProxyGroupName()` to detect real proxy group name from `rawConfig['proxy-groups']` before injecting override rules; replaces `,PROXY,` → `,<real name>,` in all rule strings
