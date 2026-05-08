@@ -1,0 +1,25 @@
+<!-- Raketa launcher background: deep space dark with emerald accent -->
+<!-- Pairs with white rocket foreground icon -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+  <!-- Deep charcoal background — dark space feel -->
+  <path
+      android:fillColor="#FF0D1F17"
+      android:pathData="M0,0h108v108h-108z"/>
+  <!-- Subtle emerald radial glow at center -->
+  <path
+      android:fillColor="#1400703C"
+      android:pathData="M54,54 m-54,0 a54,54 0 1,0 108,0 a54,54 0 1,0 -108,0"/>
+  <!-- Star field dots (decorative) -->
+  <path
+      android:fillColor="#33FFFFFF"
+      android:pathData="M20,20 m-1,0 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0
+                         M88,35 m-1,0 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0
+                         M75,85 m-1,0 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0
+                         M25,70 m-0.8,0 a0.8,0.8 0 1,0 1.6,0 a0.8,0.8 0 1,0 -1.6,0
+                         M90,15 m-0.8,0 a0.8,0.8 0 1,0 1.6,0 a0.8,0.8 0 1,0 -1.6,0
+                         M15,90 m-0.8,0 a0.8,0.8 0 1,0 1.6,0 a0.8,0.8 0 1,0 -1.6,0"/>
+</vector>
