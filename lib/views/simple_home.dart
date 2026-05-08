@@ -169,10 +169,15 @@ Future<void> doProfileImport({
   }
 
   ref.read(profilesProvider.notifier).setProfile(profile!);
-  if (ref.read(currentProfileIdProvider) == null) {
-    ref.read(currentProfileIdProvider.notifier).value = profile.id;
-    globalState.appController.applyProfileDebounce(silence: true);
+  final isFirstProfile = ref.read(currentProfileIdProvider) == null;
+  if (isFirstProfile) {
+    ref.read(currentProfileIdProvider.notifier).value = profile!.id;
   }
+  // Always apply Russia 2026 preset after import so:
+  //   - First import: preset is immediately active with default services
+  //   - Re-import: preset rules are reapplied (may have been wiped by new profile)
+  // applyRussia2026Preset internally calls applyProfileDebounce so no double-apply.
+  applyRussia2026Preset(ref);
 }
 
 // ─── Content-type sniff helpers ───────────────────────────────────────────────
@@ -399,9 +404,7 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
             const Spacer(),
 
             // ── Action buttons ─────────────────────────────────────────────
-            _RowBtn(icon: Icons.tune_rounded, label: 'Режимы',
-                onTap: () => _showModes(context)),
-            const SizedBox(height: 10),
+            // Russia 2026: режимы убраны, только настройки сервисов
             _RowBtn(icon: Icons.settings_rounded, label: 'Настройки',
                 onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(builder: (_) => const SettingsView()))),
