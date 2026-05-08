@@ -6,7 +6,9 @@ import 'dart:isolate';
 import 'package:archive/archive.dart';
 import 'package:flclashx/clash/clash.dart';
 import 'package:flclashx/common/archive.dart';
+import 'package:flclashx/common/russia_preset.dart';
 import 'package:flclashx/services/subscription_notification_service.dart';
+import 'package:flclashx/services/auto_refresh_service.dart';
 import 'package:flclashx/enum/enum.dart';
 import 'package:flclashx/plugins/app.dart';
 import 'package:flclashx/providers/providers.dart';
@@ -143,6 +145,19 @@ class AppController {
     await StatusBarManager.updateIcon(isConnected: isStart);
 
     if (isStart) {
+      // Ensure config is loaded into Go core BEFORE calling startVpn.
+      // getAndroidVpnOptions() returns null if setupConfig hasn't run yet,
+      // causing "VPN configuration is missing" PlatformException.
+      // applyProfile is idempotent — safe to call even if already applied.
+      final profileId = _ref.read(currentProfileIdProvider);
+      if (profileId != null) {
+        try {
+          await applyProfile(silence: true);
+        } catch (e) {
+          commonPrint.log("updateStatus: applyProfile pre-check failed: $e");
+          // Proceed anyway — handleStart will throw descriptively if opts still null
+        }
+      }
       // Initialize foreground notification cache before starting
       initForegroundCache();
       await globalState.handleStart([
@@ -153,10 +168,13 @@ class AppController {
           await _ref.read(currentProfileProvider)?.profileLastModified;
       if (currentLastModified == null || lastProfileModified == null) {
         addCheckIpNumDebounce();
+        // Auto-select fastest proxy after VPN starts
+        AutoRefreshService.instance.autoSelectFastestAsync(_ref);
         return;
       }
       if (currentLastModified <= (lastProfileModified ?? 0)) {
         addCheckIpNumDebounce();
+        AutoRefreshService.instance.autoSelectFastestAsync(_ref);
         return;
       }
       applyProfileDebounce();
@@ -639,6 +657,11 @@ class AppController {
 
   void setProfile(Profile profile) {
     _ref.read(profilesProvider.notifier).setProfile(profile);
+    // Persist immediately after every profile change.
+    // Without this, if the app is killed (OOM, force-stop) before going through
+    // paused/inactive lifecycle, the profile is lost because Profiles.onUpdate
+    // only updates in-RAM globalState.config — it never writes to SharedPreferences.
+    savePreferencesDebounce();
   }
 
   void setProfileAndAutoApply(Profile profile) {
@@ -1159,6 +1182,15 @@ class AppController {
         globalState.getCoreState(),
       );
     }
+    // Auto-apply Russia 2026 preset on startup if profile exists but
+    // overrideData is not yet enabled (e.g. fresh install + existing profile).
+    final profileId = _ref.read(currentProfileIdProvider);
+    if (profileId != null) {
+      final profile = _ref.read(profilesProvider).getProfile(profileId);
+      if (profile != null && !profile.overrideData.enable) {
+        applyRussia2026Preset(_ref);
+      }
+    }
     await applyProfile();
   }
 
@@ -1177,6 +1209,10 @@ class AppController {
         const Duration(seconds: 1), _updateCurrentProfileSubscription);
     autoUpdateProfiles();
     autoCheckUpdate();
+    // 24-hour background subscription refresh
+    Future.delayed(
+        const Duration(seconds: 3),
+        () => AutoRefreshService.instance.checkAndRefresh(_ref));
     if (!Platform.isMacOS) {
       if (!_ref.read(appSettingProvider).silentLaunch) {
         window?.show();
