@@ -328,19 +328,23 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
 
             // ── Logo / icon ────────────────────────────────────────────────
             AnimatedSwitcher(
-              duration: const Duration(milliseconds: 400),
-              child: Icon(
+              duration: const Duration(milliseconds: 500),
+              transitionBuilder: (child, anim) => ScaleTransition(
+                scale: Tween(begin: 0.85, end: 1.0).animate(
+                  CurvedAnimation(parent: anim, curve: Curves.elasticOut)),
+                child: FadeTransition(opacity: anim, child: child)),
+              child: _RocketIcon(
                 key: ValueKey(isOn),
-                isOn ? Icons.shield_rounded : Icons.shield_outlined,
-                size: 68,
-                color: isOn ? _lime : _slate,
+                active: isOn,
+                size: 80,
               ),
             ),
-            const SizedBox(height: 14),
-            Text('FlClashR',
+            const SizedBox(height: 10),
+            Text('Raketa',
                 style: TextStyle(
-                    fontSize: 42, fontWeight: FontWeight.w900,
-                    color: textPri, letterSpacing: -1)),
+                    fontSize: 44, fontWeight: FontWeight.w900,
+                    color: textPri, letterSpacing: -1.5,
+                    fontFamily: 'Roboto')),
             const SizedBox(height: 6),
             // Init indicator
             AnimatedOpacity(
@@ -633,7 +637,7 @@ class _SettingsState extends ConsumerState<SettingsView> {
         // ── About ────────────────────────────────────────────────────────────
         _SectionHdr('О приложении', context),
         _Card(context: context, child: Column(children: [
-          _InfoRow(label: 'Приложение', value: 'FlClashR', context: context),
+          _InfoRow(label: 'Приложение', value: 'Raketa', context: context),
           _Div(context),
           _InfoRow(label: 'Версия', value: _version, context: context),
         ])),
@@ -1267,4 +1271,200 @@ class _ServiceTile extends StatelessWidget {
       ),
     );
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Rocket icon — brand asset for Raketa app
+// Drawn with CustomPaint; no external assets required.
+// Active state: emerald+spring gradient rocket with glow.
+// Inactive state: slate-gray rocket outline.
+// ─────────────────────────────────────────────────────────────────────────────
+class _RocketIcon extends StatelessWidget {
+  final bool active;
+  final double size;
+  const _RocketIcon({super.key, required this.active, this.size = 80});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        painter: _RocketPainter(active: active),
+      ),
+    );
+  }
+}
+
+class _RocketPainter extends CustomPainter {
+  final bool active;
+  const _RocketPainter({required this.active});
+
+  // Brand palette
+  static const _emerald = Color(0xFF00703C);
+  static const _spring  = Color(0xFFA0E720);
+  static const _sky     = Color(0xFF00ADEE);
+  static const _slate   = Color(0xFF8A9BB0);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final cx = w / 2;
+
+    if (active) {
+      // ── Glow halo ─────────────────────────────────────────────────────────
+      final glowPaint = Paint()
+        ..shader = RadialGradient(
+          colors: [_spring.withOpacity(0.28), _emerald.withOpacity(0.0)],
+        ).createShader(Rect.fromCircle(
+            center: Offset(cx, h * 0.52), radius: w * 0.52))
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12);
+      canvas.drawCircle(Offset(cx, h * 0.52), w * 0.52, glowPaint);
+    }
+
+    // ── Rocket body ───────────────────────────────────────────────────────
+    // Coordinate system: 0,0 top-left, rocket points UP.
+    // Body is an elongated teardrop/capsule shape.
+    final bodyPath = Path();
+    // Nose tip
+    bodyPath.moveTo(cx, h * 0.04);
+    // Right shoulder curve
+    bodyPath.cubicTo(
+      cx + w * 0.32, h * 0.10,
+      cx + w * 0.30, h * 0.36,
+      cx + w * 0.26, h * 0.55,
+    );
+    // Right fin flare
+    bodyPath.lineTo(cx + w * 0.40, h * 0.76);
+    bodyPath.lineTo(cx + w * 0.26, h * 0.68);
+    // Bottom right
+    bodyPath.lineTo(cx + w * 0.22, h * 0.82);
+    // Center bottom (nozzle)
+    bodyPath.lineTo(cx, h * 0.78);
+    // Center bottom (nozzle) left side
+    bodyPath.lineTo(cx - w * 0.22, h * 0.82);
+    // Left fin flare
+    bodyPath.lineTo(cx - w * 0.26, h * 0.68);
+    bodyPath.lineTo(cx - w * 0.40, h * 0.76);
+    bodyPath.lineTo(cx - w * 0.26, h * 0.55);
+    // Left shoulder curve
+    bodyPath.cubicTo(
+      cx - w * 0.30, h * 0.36,
+      cx - w * 0.32, h * 0.10,
+      cx, h * 0.04,
+    );
+    bodyPath.close();
+
+    if (active) {
+      // Gradient fill
+      final bodyPaint = Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [_spring, _emerald],
+        ).createShader(Rect.fromLTWH(0, 0, w, h * 0.85))
+        ..style = PaintingStyle.fill;
+      canvas.drawPath(bodyPath, bodyPaint);
+
+      // Subtle highlight on left edge
+      final highlightPaint = Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white.withOpacity(0.22), Colors.white.withOpacity(0.0)],
+        ).createShader(Rect.fromLTWH(0, 0, w * 0.5, h * 0.6))
+        ..style = PaintingStyle.fill;
+      canvas.drawPath(bodyPath, highlightPaint);
+    } else {
+      // Inactive: just outline
+      final outlinePaint = Paint()
+        ..color = _slate
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = w * 0.045
+        ..strokeJoin = StrokeJoin.round
+        ..strokeCap = StrokeCap.round;
+      canvas.drawPath(bodyPath, outlinePaint);
+    }
+
+    // ── Porthole window ───────────────────────────────────────────────────
+    final windowCenter = Offset(cx, h * 0.35);
+    final windowRadius = w * 0.115;
+
+    if (active) {
+      // Sky-blue filled circle
+      canvas.drawCircle(
+          windowCenter, windowRadius,
+          Paint()..color = _sky.withOpacity(0.95));
+      // Sheen
+      canvas.drawCircle(
+          windowCenter, windowRadius,
+          Paint()
+            ..shader = RadialGradient(
+              center: const Alignment(-0.3, -0.3),
+              colors: [Colors.white.withOpacity(0.4), Colors.transparent],
+            ).createShader(Rect.fromCircle(
+                center: windowCenter, radius: windowRadius)));
+      // Ring
+      canvas.drawCircle(
+          windowCenter, windowRadius,
+          Paint()
+            ..color = Colors.white.withOpacity(0.55)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = w * 0.025);
+    } else {
+      canvas.drawCircle(
+          windowCenter, windowRadius,
+          Paint()
+            ..color = _slate.withOpacity(0.3)
+            ..style = PaintingStyle.fill);
+      canvas.drawCircle(
+          windowCenter, windowRadius,
+          Paint()
+            ..color = _slate
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = w * 0.035);
+    }
+
+    // ── Flame exhaust ──────────────────────────────────────────────────────
+    if (active) {
+      // Outer flame — spring yellow/lime
+      final flame1 = Path();
+      flame1.moveTo(cx - w * 0.13, h * 0.80);
+      flame1.cubicTo(
+        cx - w * 0.09, h * 0.90, cx - w * 0.05, h * 1.00, cx, h * 0.97,
+      );
+      flame1.cubicTo(
+        cx + w * 0.05, h * 1.00, cx + w * 0.09, h * 0.90, cx + w * 0.13, h * 0.80,
+      );
+      flame1.close();
+      canvas.drawPath(
+          flame1,
+          Paint()
+            ..shader = LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [_spring.withOpacity(0.9), _spring.withOpacity(0.0)],
+            ).createShader(Rect.fromLTWH(cx - w * 0.14, h * 0.78, w * 0.28, h * 0.24)));
+
+      // Inner flame — sky blue / white core
+      final flame2 = Path();
+      flame2.moveTo(cx - w * 0.06, h * 0.80);
+      flame2.cubicTo(
+        cx - w * 0.03, h * 0.88, cx - w * 0.01, h * 0.94, cx, h * 0.93,
+      );
+      flame2.cubicTo(
+        cx + w * 0.01, h * 0.94, cx + w * 0.03, h * 0.88, cx + w * 0.06, h * 0.80,
+      );
+      flame2.close();
+      canvas.drawPath(
+          flame2,
+          Paint()
+            ..color = Colors.white.withOpacity(0.75)
+            ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3));
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RocketPainter old) => old.active != active;
 }
