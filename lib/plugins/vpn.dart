@@ -88,47 +88,25 @@ class Vpn {
     }
   }
 
-  /// Default foreground params when running in UI mode
+  /// Default foreground params when running in UI mode.
+  /// Title is always our Russian brand string; content shows traffic stats.
   String _getDefaultForegroundParams() {
+    // Fixed Russian title — shown in notification shade regardless of profile
+    const title = "Интернет сейчас свободнее";
+    const body = "Интернет стал немного свободнее";
+
     try {
       final traffic = clashCore.getTraffic();
-      final profile = globalState.config.currentProfile;
-      final profileName = profile?.label ?? profile?.id ?? "FlClashX";
-      
-      // Resolve current proxy name using appController (always up-to-date via Riverpod)
-      String? proxyName;
-      try {
-        final serverInfoGroupName = _decodeBase64IfNeeded(
-          profile?.providerHeaders['flclashx-serverinfo'],
-        );
-        if (serverInfoGroupName != null && serverInfoGroupName.isNotEmpty) {
-          proxyName = globalState.appController.getSelectedProxyName(serverInfoGroupName);
-        }
-      } catch (_) {}
-
-      // Build title
-      final serverDisplay = (proxyName ?? "").trim();
-      final title = serverDisplay.isNotEmpty ? "$profileName / $serverDisplay" : profileName;
-
-      // Service name for subtext from header flclashx-servicename
-      String serviceName = "";
-      try {
-        String? svc = profile?.providerHeaders['flclashx-servicename'];
-        if (svc != null && svc.isNotEmpty) {
-          serviceName = _decodeBase64IfNeeded(svc)?.trim() ?? "";
-        }
-      } catch (_) {}
-      
       return json.encode({
         "title": title,
-        "server": serviceName,
-        "content": "$traffic"
-      });
-    } catch (e) {
-      return json.encode({
-        "title": "FlClashX",
         "server": "",
-        "content": ""
+        "content": traffic.isNotEmpty ? "\$traffic" : body,
+      });
+    } catch (_) {
+      return json.encode({
+        "title": title,
+        "server": "",
+        "content": body,
       });
     }
   }
