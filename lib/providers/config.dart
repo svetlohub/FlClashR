@@ -157,6 +157,9 @@ class CurrentProfileId extends _$CurrentProfileId
     );
     // Notify tile service about profile change
     tile?.updateTile();
+    // Persist immediately — currentProfileId loss on force-kill means
+    // the selected subscription disappears after restart.
+    globalState.appController.savePreferencesDebounce();
   }
 }
 
