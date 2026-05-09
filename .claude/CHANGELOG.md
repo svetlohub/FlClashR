@@ -1,3 +1,31 @@
+# Changelog
+
+## [1.0.0] — 2026-05-10 🚀 Initial Release
+
+### What is Raketa?
+Raketa is a free, open-source VPN client for Android that gives you smart traffic routing.
+Only the services that need it (Telegram, YouTube, WhatsApp) go through VPN. Everything else — banks, Russian sites, streaming — goes direct. No slowdowns, no battery drain.
+
+### Features
+- ✅ **Smart Russia routing** — Telegram, YouTube, WhatsApp through VPN by default; all other traffic direct
+- ✅ **One-tap VPN** — tap once, connects in seconds
+- ✅ **Subscription import** — paste any Clash YAML, base64, or proxy URI link
+- ✅ **Auto server selection** — pings all servers on connect, picks the fastest
+- ✅ **24h auto-refresh** — subscription updates silently in background
+- ✅ **QUIC blocking** — forces TCP for better proxy compatibility
+- ✅ **Light/dark theme** — follows device setting automatically
+- ✅ **Persistent notification** with Disconnect and Reconnect buttons
+- ✅ Based on [Mihomo (Clash Meta)](https://github.com/MetaCubeX/mihomo) core
+
+### Technical
+- Minimum Android: 6.0 (API 23)
+- Architecture: arm64-v8a, x86_64
+- APK size: ~25MB
+
+---
+
+*Based on FlClashX • Routing rules from RoscomVPN community*
+
 ## Raketa 2026-05-06 (rebrand from FlClashR)
 
 - rebrand: all user-visible strings FlClashR/FlClashX → Raketa (22 files)
