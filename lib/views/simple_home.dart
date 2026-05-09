@@ -363,44 +363,65 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
             const Spacer(),
 
             // ── Big toggle button ──────────────────────────────────────────
-            AnimatedBuilder(
-              animation: _pulseAnim,
-              builder: (_, child) => Container(
-                width: double.infinity, height: 86,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(26),
-                  gradient: LinearGradient(
-                    colors: isReady ? btnGrad : [_slate, _slate.withOpacity(0.7)],
-                    begin: Alignment.topLeft, end: Alignment.bottomRight,
-                  ),
-                  boxShadow: isReady && isOn ? [BoxShadow(
-                    color: glowColor,
-                    blurRadius: 18 + _pulseAnim.value,
-                    spreadRadius: _pulseAnim.value * 0.4,
-                  )] : [],
-                ),
-                child: child,
-              ),
-              child: Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(26),
-                  onTap: isReady ? () => _toggle(isOn) : null,
-                  child: Center(child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
-                    child: isReady
-                        ? Text(
-                            key: ValueKey(isOn),
-                            isOn ? 'Отключить' : 'Включить',
-                            style: const TextStyle(
-                                fontSize: 24, fontWeight: FontWeight.bold,
-                                color: Colors.white),
-                          )
-                        : Text('Подождите…',
-                            style: TextStyle(fontSize: 18,
+            // Glow is isolated in RepaintBoundary so pulse animation never
+            // repaints the button body (gradient + text + inkwell).
+            RepaintBoundary(
+              child: Stack(
+                children: [
+                  // Static button body — only rebuilt on isOn/isReady change
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 350),
+                    curve: Curves.easeInOut,
+                    width: double.infinity, height: 86,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(26),
+                      gradient: LinearGradient(
+                        colors: isReady ? btnGrad : [_slate, _slate.withOpacity(0.7)],
+                        begin: Alignment.topLeft, end: Alignment.bottomRight,
+                      ),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(26),
+                        onTap: isReady ? () => _toggle(isOn) : null,
+                        child: Center(child: AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child: isReady
+                              ? Text(
+                                  key: ValueKey(isOn),
+                                  isOn ? 'Отключить' : 'Включить',
+                                  style: const TextStyle(
+                                      fontSize: 24, fontWeight: FontWeight.bold,
+                                      color: Colors.white),
+                                )
+                              : Text('Подождите…',
+                                  style: TextStyle(fontSize: 18,
                                 color: Colors.white.withOpacity(0.6))),
-                  )),
-                ),
+                        )),
+                      ),
+                    ),
+                  ),
+                  // Glow overlay — isolated AnimatedBuilder, only this layer repaints at 60fps
+                  if (isReady && isOn)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: AnimatedBuilder(
+                          animation: _pulseAnim,
+                          builder: (_, __) => DecoratedBox(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(26),
+                              boxShadow: [BoxShadow(
+                                color: glowColor,
+                                blurRadius: 18 + _pulseAnim.value,
+                                spreadRadius: _pulseAnim.value * 0.4,
+                              )],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ),
             const SizedBox(height: 10),
@@ -420,41 +441,6 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
           ]),
         ),
       ),
-    );
-  }
-
-  void _showModes(BuildContext ctx) {
-    showModalBottomSheet<void>(
-      context: ctx,
-      backgroundColor: ctx.surf,
-      shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (c) => SafeArea(child: Padding(
-        padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-        child: Column(mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text('Режимы', style: TextStyle(fontSize: 22,
-              fontWeight: FontWeight.w800, color: c.textPri)),
-          const SizedBox(height: 4),
-          Text('Готовый набор правил маршрутизации',
-              style: TextStyle(fontSize: 13, color: c.textSec)),
-          const SizedBox(height: 20),
-          _SheetTile(icon: Icons.flag_rounded, color: _violet,
-              title: 'Россия 2026',
-              subtitle: 'YouTube, Telegram — VPN. Банки — напрямую.',
-              onTap: () {
-                applyRussia2026Preset(ref);
-                Navigator.of(c).pop();
-                _snack('Пресет «Россия 2026» применён');
-              }),
-          const SizedBox(height: 10),
-          _SheetTile(icon: Icons.add_link_rounded, color: _sky,
-              title: 'Импорт подписки',
-              subtitle: 'Вставить ссылку на прокси-ключ',
-              onTap: () { Navigator.of(c).pop(); _showImport(ctx); }),
-          const SizedBox(height: 8),
-        ]),
-      )),
     );
   }
 
