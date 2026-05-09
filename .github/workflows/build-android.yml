@@ -1,17 +1,9 @@
-name: Build & Release Raketa
+name: Build Android APK
 
 on:
   push:
     branches: [ main ]
-    tags:
-      - 'v*'
   workflow_dispatch:
-    inputs:
-      release:
-        description: 'Create GitHub Release'
-        required: false
-        default: 'false'
-        type: boolean
 
 jobs:
   build:
@@ -54,30 +46,23 @@ jobs:
           flutter-version: '3.32.8'
           cache: true
 
-      # Use repository secret KEYSTORE_BASE64 if available, otherwise generate ephemeral key.
-      # For production release: add KEYSTORE_BASE64, KEYSTORE_PASSWORD, KEY_ALIAS, KEY_PASSWORD
-      # as repository secrets in Settings → Secrets and variables → Actions.
-      - name: Setup release keystore
+      # Пароли совпадают с дефолтами в build.gradle.kts:
+      #   storePassword ?: "123456"
+      #   keyAlias      ?: "flclashr"
+      #   keyPassword   ?: "123456"
+      - name: Generate release keystore
         run: |
-          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/keystore.jks
-            echo "STORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
-            echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
-            echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
-            echo "Using production keystore from secrets"
-          else
-            keytool -genkeypair \
-              -v \
-              -keystore android/app/keystore.jks \
-              -alias flclashr \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -storepass 123456 \
-              -keypass 123456 \
-              -dname "CN=Raketa, OU=Dev, O=Raketa, L=Moscow, S=Moscow, C=RU"
-            echo "Using ephemeral keystore (for CI testing only)"
-          fi
+          keytool -genkeypair \
+            -v \
+            -keystore android/app/keystore.jks \
+            -alias flclashr \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -storepass 123456 \
+            -keypass 123456 \
+            -dname "CN=FlClashR, OU=Dev, O=FlClashR, L=Moscow, S=Moscow, C=RU"
+          echo "Keystore: $(ls -lh android/app/keystore.jks)"
 
       - name: Flutter pub get
         run: flutter pub get
@@ -90,7 +75,7 @@ jobs:
         env:
           ANDROID_NDK: ${{ env.ANDROID_NDK }}
 
-      - name: Generate Dart code (freezed / riverpod)
+      - name: Generate Dart code (freezed / riverpod / drift)
         run: dart run build_runner build --delete-conflicting-outputs
 
       - name: Build APK — arm64-v8a
@@ -102,44 +87,19 @@ jobs:
       - name: Build APK — universal
         run: flutter build apk --release
 
-      - name: Rename APKs with version
-        run: |
-          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)
-          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
-             build/app/outputs/flutter-apk/Raketa-${VERSION}-arm64.apk
-          cp build/app/outputs/flutter-apk/app-release.apk \
-             build/app/outputs/flutter-apk/Raketa-${VERSION}-universal.apk
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          echo "Built version: $VERSION"
+      - name: List APKs
+        run: find build/app/outputs -name "*.apk" | sort
 
-      - name: Upload arm64 APK artifact
+      - name: Upload arm64 APK
         uses: actions/upload-artifact@v5
         with:
-          name: Raketa-arm64-release
-          path: build/app/outputs/flutter-apk/Raketa-*-arm64.apk
-          retention-days: 30
+          name: FlClashR-arm64-release
+          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          retention-days: 14
 
-      - name: Upload universal APK artifact
+      - name: Upload universal APK
         uses: actions/upload-artifact@v5
         with:
-          name: Raketa-universal-release
-          path: build/app/outputs/flutter-apk/Raketa-*-universal.apk
-          retention-days: 30
-
-      # Creates a GitHub Release when:
-      # - A tag like v1.0.0 is pushed, OR
-      # - workflow_dispatch with release=true
-      - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.release == 'true'
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Raketa ${{ env.VERSION }}
-          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || format('v{0}', env.VERSION) }}
-          body_path: CHANGELOG.md
-          draft: false
-          prerelease: false
-          files: |
-            build/app/outputs/flutter-apk/Raketa-*-arm64.apk
-            build/app/outputs/flutter-apk/Raketa-*-universal.apk
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          name: FlClashR-universal-release
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 14
