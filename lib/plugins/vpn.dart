@@ -51,7 +51,7 @@ class Vpn {
   String _cachedServerName = "";
   
   /// Cached profile info for foreground notification
-  String _cachedProfileName = "FlClashX";
+  String _cachedProfileName = "Raketa";
   String _cachedServiceName = "";
   
   /// Update cached server name (called from UI when proxy changes)
@@ -90,17 +90,18 @@ class Vpn {
 
   /// Default foreground params when running in UI mode.
   /// Title is always our Russian brand string; content shows traffic stats.
-  String _getDefaultForegroundParams() {
-    // Fixed Russian title — shown in notification shade regardless of profile
+  /// NOTE: must be async because clashCore.getTraffic() returns Future<Traffic>.
+  Future<String> _getDefaultForegroundParams() async {
     const title = "Интернет сейчас свободнее";
     const body = "Интернет стал немного свободнее";
 
     try {
-      final traffic = clashCore.getTraffic();
+      final traffic = await clashCore.getTraffic();
+      final trafficStr = traffic.toString(); // "0B↑ 0B↓" style
       return json.encode({
         "title": title,
         "server": "",
-        "content": traffic.isNotEmpty ? "\$traffic" : body,
+        "content": trafficStr,
       });
     } catch (_) {
       return json.encode({
