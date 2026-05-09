@@ -58,8 +58,10 @@ android {
 
     buildTypes {
         release {
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // R8 minification: reduces APK size ~30%, improves startup time
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = if (isRelease) signingConfigs.getByName("release") else signingConfigs.getByName("debug")
         }
         debug {
