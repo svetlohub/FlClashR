@@ -11,7 +11,7 @@ import com.follow.clashx.RunState
 
 
 @RequiresApi(Build.VERSION_CODES.N)
-class FlClashXTileService : TileService() {
+class RaketaTileService : TileService() {
 
     companion object {
         private const val TAG = "FlClashTileService"
