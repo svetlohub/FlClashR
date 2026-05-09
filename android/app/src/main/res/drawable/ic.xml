@@ -1,37 +1,37 @@
-<!-- Raketa notification icon: white rocket silhouette on transparent background -->
+<!-- Raketa notification icon: white rocket silhouette, AVD format (no SVG circle) -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
-  <!-- Rocket body -->
-  <path
-      android:fillColor="#FFFFFFFF"
-      android:pathData="M12,2
-        C12,2 7,7 7,13
-        L9,13
-        L9,17
-        L8,19
-        L12,18
-        L16,19
-        L15,17
-        L15,13
-        L17,13
-        C17,7 12,2 12,2Z"/>
-  <!-- Left fin -->
-  <path
-      android:fillColor="#FFFFFFFF"
-      android:pathData="M9,14 L6,18 L9,17Z"/>
-  <!-- Right fin -->
-  <path
-      android:fillColor="#FFFFFFFF"
-      android:pathData="M15,14 L18,18 L15,17Z"/>
-  <!-- Porthole window -->
-  <circle
-      android:fillColor="#00000000"
-      android:strokeColor="#FFFFFFFF"
-      android:strokeWidth="1.2"
-      android:cx="12"
-      android:cy="10"
-      android:r="1.6"/>
+
+    <!-- Rocket body + fins as single path -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="
+          M12,2
+          C10,5 8,8 8,13
+          L9.5,13
+          L9.5,17
+          L8,19
+          L12,18
+          L16,19
+          L14.5,17
+          L14.5,13
+          L16,13
+          C16,8 14,5 12,2 Z
+          M9.5,14.5 L7,18 L9.5,17 Z
+          M14.5,14.5 L17,18 L14.5,17 Z" />
+
+    <!-- Porthole: circle drawn as two arcs via path -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="1.2"
+        android:pathData="
+          M12,8.5
+          m-2,0
+          a2,2 0 1,0 4,0
+          a2,2 0 1,0 -4,0" />
+
 </vector>
