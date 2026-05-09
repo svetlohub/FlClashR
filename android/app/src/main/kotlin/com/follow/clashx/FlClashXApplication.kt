@@ -11,11 +11,11 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-class FlClashXApplication : Application() {
+class RaketaApplication : Application() {
 
     companion object {
-        private const val TAG = "FlClashXApp"
-        private lateinit var instance: FlClashXApplication
+        private const val TAG = "RaketaApp"
+        private lateinit var instance: RaketaApplication
 
         fun getAppContext(): Context = instance.applicationContext
 
@@ -41,7 +41,7 @@ class FlClashXApplication : Application() {
         super.onCreate()
         instance = this
         setupCrashHandler()
-        Log.d(TAG, "FlClashXApplication started, device: ${Build.MODEL} API ${Build.VERSION.SDK_INT}")
+        Log.d(TAG, "RaketaApplication started, device: ${Build.MODEL} API ${Build.VERSION.SDK_INT}")
     }
 
     private fun setupCrashHandler() {
