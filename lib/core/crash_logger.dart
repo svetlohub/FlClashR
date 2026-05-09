@@ -16,7 +16,7 @@ class CrashLogger {
       _logFile = File('${dir.path}/flclashr_debug.log');
       _ready = true;
       final header =
-          '\n=== FlClashR CrashLogger started: ${DateTime.now()} ===\n'
+          '\n=== Raketa CrashLogger started: ${DateTime.now()} ===\n'
           'Platform: ${Platform.operatingSystem} ${Platform.operatingSystemVersion}\n';
       await _logFile!.writeAsString(header, mode: FileMode.append);
     } catch (e) {
