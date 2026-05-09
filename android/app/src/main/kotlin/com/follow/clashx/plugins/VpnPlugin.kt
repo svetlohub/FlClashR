@@ -16,7 +16,7 @@ import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.getSystemService
-import com.follow.clashx.FlClashXApplication
+import com.follow.clashx.RaketaApplication
 import com.follow.clashx.GlobalState
 import com.follow.clashx.RunState
 import com.follow.clashx.core.Core
@@ -25,8 +25,8 @@ import com.follow.clashx.extensions.resolveDns
 import com.follow.clashx.models.StartForegroundParams
 import com.follow.clashx.models.VpnOptions
 import com.follow.clashx.services.BaseServiceInterface
-import com.follow.clashx.services.FlClashXService
-import com.follow.clashx.services.FlClashXVpnService
+import com.follow.clashx.services.RaketaService
+import com.follow.clashx.services.RaketaVpnService
 import com.google.gson.Gson
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
@@ -52,15 +52,15 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     private val uidPageNameMap = mutableMapOf<Int, String>()
 
     private val connectivity by lazy {
-        FlClashXApplication.getAppContext().getSystemService<ConnectivityManager>()
+        RaketaApplication.getAppContext().getSystemService<ConnectivityManager>()
     }
 
     private val connection = object : ServiceConnection {
         override fun onServiceConnected(className: ComponentName, service: IBinder) {
             isBind = true
             flClashXService = when (service) {
-                is FlClashXVpnService.LocalBinder -> service.getService()
-                is FlClashXService.LocalBinder -> service.getService()
+                is RaketaVpnService.LocalBinder -> service.getService()
+                is RaketaService.LocalBinder -> service.getService()
                 else -> throw Exception("invalid binder")
             }
             handleStartService()
@@ -253,7 +253,7 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
     }
 
     private fun protect(fd: Int): Boolean {
-        return (flClashXService as? FlClashXVpnService)?.protect(fd) == true
+        return (flClashXService as? RaketaVpnService)?.protect(fd) == true
     }
 
     private fun resolverProcess(
@@ -272,7 +272,7 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
         }
         if (!uidPageNameMap.containsKey(nextUid)) {
             uidPageNameMap[nextUid] =
-                FlClashXApplication.getAppContext().packageManager?.getPackagesForUid(nextUid)
+                RaketaApplication.getAppContext().packageManager?.getPackagesForUid(nextUid)
                     ?.first() ?: ""
         }
         return uidPageNameMap[nextUid] ?: ""
@@ -291,17 +291,17 @@ data object VpnPlugin : FlutterPlugin, MethodChannel.MethodCallHandler {
 
     private fun bindService() {
         if (isBind) {
-            FlClashXApplication.getAppContext().unbindService(connection)
+            RaketaApplication.getAppContext().unbindService(connection)
         }
         val intent = when (options?.enable == true) {
-            true -> Intent(FlClashXApplication.getAppContext(), FlClashXVpnService::class.java)
-            false -> Intent(FlClashXApplication.getAppContext(), FlClashXService::class.java)
+            true -> Intent(RaketaApplication.getAppContext(), RaketaVpnService::class.java)
+            false -> Intent(RaketaApplication.getAppContext(), RaketaService::class.java)
         }
-        FlClashXApplication.getAppContext().bindService(intent, connection, Context.BIND_AUTO_CREATE)
+        RaketaApplication.getAppContext().bindService(intent, connection, Context.BIND_AUTO_CREATE)
     }
 
     private fun showSubscriptionNotification(title: String, message: String, actionLabel: String, actionUrl: String) {
-        val context = FlClashXApplication.getAppContext()
+        val context = RaketaApplication.getAppContext()
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         // Create notification channel for subscription alerts (Android O+)
