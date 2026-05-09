@@ -57,9 +57,9 @@ object GlobalState {
         if (configJson != null) {
             try {
                 val config = org.json.JSONObject(configJson)
-                val currentProfileId = config.optString("currentProfileId", null)
+                val currentProfileId = config.optString("currentProfileId", "")
                 Log.d("GlobalState", "hasActiveProfile: currentProfileId=$currentProfileId")
-                return !currentProfileId.isNullOrEmpty()
+                return currentProfileId.isNotEmpty()
             } catch (e: Exception) {
                 Log.e("GlobalState", "Error parsing config: ${e.message}")
                 return false
