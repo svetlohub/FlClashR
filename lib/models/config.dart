@@ -110,7 +110,7 @@ class AccessControl with _$AccessControl {
 }
 
 extension AccessControlExt on AccessControl {
-  List<String> get currentList => switch (mode) {
+  List<String> get currentList => switch (mode as AccessControlMode) {
         AccessControlMode.acceptSelected => acceptList,
         AccessControlMode.rejectSelected => rejectList,
       };
