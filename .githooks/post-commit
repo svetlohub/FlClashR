@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Auto-push to origin/main after every commit.
+# Activate once with: git config core.hooksPath .githooks
+
+# Skip during rebase/merge/cherry-pick
+GITDIR=$(git rev-parse --git-dir)
+for f in rebase-merge/interactive rebase-apply/rebasing MERGE_HEAD CHERRY_PICK_HEAD; do
+  [ -f "$GITDIR/$f" ] && exit 0
+done
+
+echo "→ Auto-pushing to origin/main..."
+git pull --rebase origin main --quiet 2>/dev/null || true
+git push origin main --quiet && \
+  echo "✅ Pushed! $(git remote get-url origin | sed 's/.*github.com[:/]//' | sed 's/.git$//')/actions"
