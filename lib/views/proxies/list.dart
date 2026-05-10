@@ -286,7 +286,7 @@ class _ProxyGroupCardState extends State<ProxyGroupCard>
           }
           return this.icon;
         }));
-        return switch (iconStyle) {
+        return switch (iconStyle as ProxiesIconStyle) {
           ProxiesIconStyle.icon => Container(
               margin: const EdgeInsets.only(
                 right: 16,
