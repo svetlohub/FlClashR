@@ -1072,7 +1072,7 @@ class AppController {
       final filesToDelete = [
         'cache.db',
         'libCachedImageData.json',
-        'FlClashX.lock',
+        'Raketa.lock',
       ];
 
       for (final fileName in filesToDelete) {
@@ -1434,7 +1434,7 @@ class AppController {
         );
 
   List<Proxy> getSortProxies(List<Proxy> proxies, [String? url]) =>
-      switch (_ref.read(proxiesStyleSettingProvider).sortType) {
+      switch (_ref.read(proxiesStyleSettingProvider).sortType as ProxiesSortType) {
         ProxiesSortType.none => proxies,
         ProxiesSortType.delay => _sortOfDelay(
             proxies: proxies,
