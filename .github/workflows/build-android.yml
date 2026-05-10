@@ -1,19 +1,18 @@
-name: Build Android APK
+name: Build & Release Raketa APK
 
 on:
   push:
-    branches: [ main ]
+    tags:
+      - 'v*'
   workflow_dispatch:
 
 jobs:
   build:
+    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: Configure git — HTTPS instead of SSH
-        run: git config --global url."https://github.com/".insteadOf "git@github.com:"
-
-      - name: Checkout (with submodules)
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -37,69 +36,82 @@ jobs:
         run: |
           echo "y" | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "ndk;27.0.12077973"
           echo "ANDROID_NDK=$ANDROID_SDK_ROOT/ndk/27.0.12077973" >> $GITHUB_ENV
-          echo "NDK_HOME=$ANDROID_SDK_ROOT/ndk/27.0.12077973"    >> $GITHUB_ENV
 
       - name: Setup Flutter 3.32.8
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
           flutter-version: '3.32.8'
+          channel: stable
           cache: true
 
-      # Пароли совпадают с дефолтами в build.gradle.kts:
-      #   storePassword ?: "123456"
-      #   keyAlias      ?: "flclashr"
-      #   keyPassword   ?: "123456"
-      - name: Generate release keystore
+      - name: Setup release keystore
         run: |
-          keytool -genkeypair \
-            -v \
-            -keystore android/app/keystore.jks \
-            -alias flclashr \
-            -keyalg RSA \
-            -keysize 2048 \
-            -validity 10000 \
-            -storepass 123456 \
-            -keypass 123456 \
-            -dname "CN=FlClashR, OU=Dev, O=FlClashR, L=Moscow, S=Moscow, C=RU"
-          echo "Keystore: $(ls -lh android/app/keystore.jks)"
+          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/keystore.jks
+            echo "STORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}"              >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}"        >> $GITHUB_ENV
+          else
+            keytool -genkeypair -v \
+              -keystore android/app/keystore.jks \
+              -alias flclashr -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass 123456 -keypass 123456 \
+              -dname "CN=Raketa,O=Raketa,C=RU"
+            echo "STORE_PASSWORD=123456" >> $GITHUB_ENV
+            echo "KEY_ALIAS=flclashr"   >> $GITHUB_ENV
+            echo "KEY_PASSWORD=123456"  >> $GITHUB_ENV
+          fi
 
       - name: Flutter pub get
         run: flutter pub get
 
-      - name: Generate launcher icons
-        run: dart run flutter_launcher_icons
-
-      - name: Build native Clash core (Go → .so)
+      - name: Build Go core (.so)
         run: dart setup.dart android --out core
         env:
           ANDROID_NDK: ${{ env.ANDROID_NDK }}
 
-      - name: Generate Dart code (freezed / riverpod / drift)
-        run: dart run build_runner build --delete-conflicting-outputs
-
-      - name: Build APK — arm64-v8a
+      - name: Build APK (arm64)
         run: |
           flutter build apk --release \
             --target-platform android-arm64 \
             --split-per-abi
 
-      - name: Build APK — universal
+      - name: Build APK (universal)
         run: flutter build apk --release
 
-      - name: List APKs
-        run: find build/app/outputs -name "*.apk" | sort
+      - name: Get version and rename APKs
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)
+          echo "VERSION=$VERSION" >> $GITHUB_ENV
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
+             build/app/outputs/flutter-apk/Raketa-${VERSION}-arm64.apk
+          cp build/app/outputs/flutter-apk/app-release.apk \
+             build/app/outputs/flutter-apk/Raketa-${VERSION}-universal.apk
 
-      - name: Upload arm64 APK
+      - name: Upload arm64 artifact
         uses: actions/upload-artifact@v5
         with:
-          name: FlClashR-arm64-release
-          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
-          retention-days: 14
+          name: Raketa-arm64
+          path: build/app/outputs/flutter-apk/Raketa-*-arm64.apk
+          retention-days: 30
 
-      - name: Upload universal APK
+      - name: Upload universal artifact
         uses: actions/upload-artifact@v5
         with:
-          name: FlClashR-universal-release
-          path: build/app/outputs/flutter-apk/app-release.apk
-          retention-days: 14
+          name: Raketa-universal
+          path: build/app/outputs/flutter-apk/Raketa-*-universal.apk
+          retention-days: 30
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Raketa ${{ env.VERSION }}
+          tag_name: ${{ github.ref_name }}
+          body_path: CHANGELOG.md
+          draft: false
+          prerelease: false
+          files: |
+            build/app/outputs/flutter-apk/Raketa-*-arm64.apk
+            build/app/outputs/flutter-apk/Raketa-*-universal.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
