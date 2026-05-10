@@ -2,9 +2,12 @@ name: Build & Release Raketa APK
 
 on:
   push:
+    branches:
+      - main          # ← каждый push в main запускает сборку
     tags:
-      - 'v*'
-  workflow_dispatch:
+      - 'v*'          # ← push тега v* → сборка + создаёт Release
+
+  workflow_dispatch:   # ← ручной запуск из GitHub UI
 
 jobs:
   build:
@@ -88,21 +91,16 @@ jobs:
           cp build/app/outputs/flutter-apk/app-release.apk \
              build/app/outputs/flutter-apk/Raketa-${VERSION}-universal.apk
 
-      - name: Upload arm64 artifact
+      - name: Upload APK artifacts (all builds)
         uses: actions/upload-artifact@v5
         with:
-          name: Raketa-arm64
-          path: build/app/outputs/flutter-apk/Raketa-*-arm64.apk
+          name: Raketa-${{ env.VERSION }}-apks
+          path: build/app/outputs/flutter-apk/Raketa-*.apk
           retention-days: 30
 
-      - name: Upload universal artifact
-        uses: actions/upload-artifact@v5
-        with:
-          name: Raketa-universal
-          path: build/app/outputs/flutter-apk/Raketa-*-universal.apk
-          retention-days: 30
-
+      # Создаёт GitHub Release ТОЛЬКО при push тега v* (не при каждом коммите в main)
       - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           name: Raketa ${{ env.VERSION }}
