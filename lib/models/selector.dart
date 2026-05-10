@@ -185,7 +185,7 @@ extension PackageListSelectorStateExt on PackageListSelectorState {
   List<Package> getSortList(List<String> selectedList) {
     final sort = accessControl.sort;
     return list.sorted(
-      (a, b) => switch (sort) {
+      (a, b) => switch (sort as AccessSortType) {
           AccessSortType.none => 0,
           AccessSortType.name => utils.sortByChar(
               utils.getPinyin(a.label),
