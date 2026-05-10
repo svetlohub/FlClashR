@@ -85,7 +85,7 @@ class OutboundMode extends StatelessWidget {
 class OutboundModeV2 extends StatelessWidget {
   const OutboundModeV2({super.key});
 
-  Color _getTextColor(BuildContext context, Mode mode) => switch (mode) {
+  Color _getTextColor(BuildContext context, Mode mode) => switch (mode as Mode) {
       Mode.rule => context.colorScheme.onSecondaryContainer,
       Mode.global => context.colorScheme.onPrimaryContainer,
       Mode.direct => context.colorScheme.onTertiaryContainer,
@@ -105,7 +105,7 @@ class OutboundModeV2 extends StatelessWidget {
                 (state) => state.mode,
               ),
             );
-            final thumbColor = switch (mode) {
+            final thumbColor = switch (mode as Mode) {
               Mode.rule => context.colorScheme.secondaryContainer,
               Mode.global => globalState.theme.darken3PrimaryContainer,
               Mode.direct => context.colorScheme.tertiaryContainer,
