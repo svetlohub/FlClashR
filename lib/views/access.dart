@@ -532,12 +532,12 @@ class AccessControlPanel extends ConsumerStatefulWidget {
 }
 
 class _AccessControlPanelState extends ConsumerState<AccessControlPanel> {
-  IconData _getIconWithAccessControlMode(AccessControlMode mode) => switch (mode) {
+  IconData _getIconWithAccessControlMode(AccessControlMode mode) => switch (mode as AccessControlMode) {
       AccessControlMode.acceptSelected => Icons.adjust_outlined,
       AccessControlMode.rejectSelected => Icons.block_outlined,
     };
 
-  String _getTextWithAccessControlMode(AccessControlMode mode) => switch (mode) {
+  String _getTextWithAccessControlMode(AccessControlMode mode) => switch (mode as AccessControlMode) {
       AccessControlMode.acceptSelected => appLocalizations.whitelistMode,
       AccessControlMode.rejectSelected => appLocalizations.blacklistMode,
     };
