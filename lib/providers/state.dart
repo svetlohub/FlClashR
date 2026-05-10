@@ -50,7 +50,7 @@ GroupsState currentGroupsState(Ref ref) {
       ref.watch(patchClashConfigProvider.select((state) => state.mode));
   final groups = ref.watch(groupsProvider);
   return GroupsState(
-    value: switch (mode) {
+    value: switch (mode as Mode) {
       Mode.direct => [],
       Mode.global => groups.toList(),
       Mode.rule => groups
