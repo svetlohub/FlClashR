@@ -542,13 +542,13 @@ class _AccessControlPanelState extends ConsumerState<AccessControlPanel> {
       AccessControlMode.rejectSelected => appLocalizations.blacklistMode,
     };
 
-  String _getTextWithAccessSortType(AccessSortType type) => switch (type) {
+  String _getTextWithAccessSortType(AccessSortType type) => switch (type as AccessSortType) {
       AccessSortType.none => appLocalizations.defaultText,
       AccessSortType.name => appLocalizations.name,
       AccessSortType.time => appLocalizations.time,
     };
 
-  IconData _getIconWithProxiesSortType(AccessSortType type) => switch (type) {
+  IconData _getIconWithProxiesSortType(AccessSortType type) => switch (type as AccessSortType) {
       AccessSortType.none => Icons.sort,
       AccessSortType.name => Icons.sort_by_alpha,
       AccessSortType.time => Icons.timeline,
