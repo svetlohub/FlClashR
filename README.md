@@ -1,7 +1,7 @@
 <div align="center">
 
 <h1>
-  FlClashR
+  RAKETA
 </h1>
 
 <p><strong>Свободный, открытый VPN-клиент для Android со смарт-маршрутизацией</strong></p>
