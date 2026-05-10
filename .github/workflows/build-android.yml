@@ -48,18 +48,25 @@ jobs:
           cache: true
 
       - name: Setup release keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-            echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/keystore.jks
-            echo "STORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
-            echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}"              >> $GITHUB_ENV
-            echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}"        >> $GITHUB_ENV
+          if [ -n "${KEYSTORE_BASE64}" ]; then
+            echo "${KEYSTORE_BASE64}" | base64 --decode > android/app/keystore.jks
+            echo "STORE_PASSWORD=${KEYSTORE_PASSWORD}" >> $GITHUB_ENV
+            echo "KEY_ALIAS=${KEY_ALIAS}"              >> $GITHUB_ENV
+            echo "KEY_PASSWORD=${KEY_PASSWORD}"        >> $GITHUB_ENV
+            echo "Using production keystore"
           else
+            echo "No keystore secret found — generating ephemeral key for CI"
             keytool -genkeypair -v \
               -keystore android/app/keystore.jks \
               -alias flclashr -keyalg RSA -keysize 2048 -validity 10000 \
               -storepass 123456 -keypass 123456 \
-              -dname "CN=Raketa,O=Raketa,C=RU"
+              -dname "CN=Raketa,O=Raketa,C=RU" 2>/dev/null
             echo "STORE_PASSWORD=123456" >> $GITHUB_ENV
             echo "KEY_ALIAS=flclashr"   >> $GITHUB_ENV
             echo "KEY_PASSWORD=123456"  >> $GITHUB_ENV
