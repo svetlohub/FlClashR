@@ -2,12 +2,9 @@ name: Build & Release Raketa APK
 
 on:
   push:
-    branches:
-      - main          # ← каждый push в main запускает сборку
-    tags:
-      - 'v*'          # ← push тега v* → сборка + создаёт Release
-
-  workflow_dispatch:   # ← ручной запуск из GitHub UI
+    branches: [ main ]
+    tags: [ 'v*' ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -47,30 +44,17 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Setup release keystore
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      - name: Generate keystore
         run: |
-          if [ -n "${KEYSTORE_BASE64}" ]; then
-            echo "${KEYSTORE_BASE64}" | base64 --decode > android/app/keystore.jks
-            echo "STORE_PASSWORD=${KEYSTORE_PASSWORD}" >> $GITHUB_ENV
-            echo "KEY_ALIAS=${KEY_ALIAS}"              >> $GITHUB_ENV
-            echo "KEY_PASSWORD=${KEY_PASSWORD}"        >> $GITHUB_ENV
-            echo "Using production keystore"
-          else
-            echo "No keystore secret found — generating ephemeral key for CI"
-            keytool -genkeypair -v \
-              -keystore android/app/keystore.jks \
-              -alias flclashr -keyalg RSA -keysize 2048 -validity 10000 \
-              -storepass 123456 -keypass 123456 \
-              -dname "CN=Raketa,O=Raketa,C=RU" 2>/dev/null
-            echo "STORE_PASSWORD=123456" >> $GITHUB_ENV
-            echo "KEY_ALIAS=flclashr"   >> $GITHUB_ENV
-            echo "KEY_PASSWORD=123456"  >> $GITHUB_ENV
-          fi
+          keytool -genkeypair -v \
+            -keystore android/app/keystore.jks \
+            -alias flclashr \
+            -keyalg RSA -keysize 2048 -validity 10000 \
+            -storepass 123456 -keypass 123456 \
+            -dname "CN=Raketa,O=Raketa,C=RU"
+          echo "STORE_PASSWORD=123456" >> $GITHUB_ENV
+          echo "KEY_ALIAS=flclashr"   >> $GITHUB_ENV
+          echo "KEY_PASSWORD=123456"  >> $GITHUB_ENV
 
       - name: Flutter pub get
         run: flutter pub get
@@ -80,16 +64,13 @@ jobs:
         env:
           ANDROID_NDK: ${{ env.ANDROID_NDK }}
 
-      - name: Build APK (arm64)
-        run: |
-          flutter build apk --release \
-            --target-platform android-arm64 \
-            --split-per-abi
+      - name: Build APK arm64
+        run: flutter build apk --release --target-platform android-arm64 --split-per-abi
 
-      - name: Build APK (universal)
+      - name: Build APK universal
         run: flutter build apk --release
 
-      - name: Get version and rename APKs
+      - name: Rename APKs
         run: |
           VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)
           echo "VERSION=$VERSION" >> $GITHUB_ENV
@@ -98,14 +79,13 @@ jobs:
           cp build/app/outputs/flutter-apk/app-release.apk \
              build/app/outputs/flutter-apk/Raketa-${VERSION}-universal.apk
 
-      - name: Upload APK artifacts (all builds)
+      - name: Upload artifacts
         uses: actions/upload-artifact@v5
         with:
-          name: Raketa-${{ env.VERSION }}-apks
+          name: Raketa-apks
           path: build/app/outputs/flutter-apk/Raketa-*.apk
           retention-days: 30
 
-      # Создаёт GitHub Release ТОЛЬКО при push тега v* (не при каждом коммите в main)
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
