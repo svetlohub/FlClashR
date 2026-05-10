@@ -12,33 +12,28 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
 
-      - name: Setup Go 1.24.0
-        uses: actions/setup-go@v6
+      - uses: actions/setup-go@v6
         with:
           go-version: '1.24.0'
           cache-dependency-path: core/go.sum
 
-      - name: Setup Java 17
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: temurin
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v3
 
-      - name: Install NDK 27.0.12077973
+      - name: Install NDK
         run: |
           echo "y" | $ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager "ndk;27.0.12077973"
           echo "ANDROID_NDK=$ANDROID_SDK_ROOT/ndk/27.0.12077973" >> $GITHUB_ENV
 
-      - name: Setup Flutter 3.32.8
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
           flutter-version: '3.32.8'
           channel: stable
@@ -48,45 +43,39 @@ jobs:
         run: |
           keytool -genkeypair -v \
             -keystore android/app/keystore.jks \
-            -alias flclashr \
-            -keyalg RSA -keysize 2048 -validity 10000 \
+            -alias flclashr -keyalg RSA -keysize 2048 -validity 10000 \
             -storepass 123456 -keypass 123456 \
             -dname "CN=Raketa,O=Raketa,C=RU"
           echo "STORE_PASSWORD=123456" >> $GITHUB_ENV
           echo "KEY_ALIAS=flclashr"   >> $GITHUB_ENV
           echo "KEY_PASSWORD=123456"  >> $GITHUB_ENV
 
-      - name: Flutter pub get
-        run: flutter pub get
+      - run: flutter pub get
 
-      - name: Build Go core (.so)
+      - name: Build Go core
         run: dart setup.dart android --out core
         env:
           ANDROID_NDK: ${{ env.ANDROID_NDK }}
 
-      - name: Build APK arm64
-        run: flutter build apk --release --target-platform android-arm64 --split-per-abi
-
-      - name: Build APK universal
-        run: flutter build apk --release
+      - name: Build APKs
+        run: |
+          flutter build apk --release --target-platform android-arm64 --split-per-abi
+          flutter build apk --release
 
       - name: Rename APKs
         run: |
-          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
-             build/app/outputs/flutter-apk/Raketa-${VERSION}-arm64.apk
-          cp build/app/outputs/flutter-apk/app-release.apk \
-             build/app/outputs/flutter-apk/Raketa-${VERSION}-universal.apk
+          V=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)
+          echo "VERSION=$V" >> $GITHUB_ENV
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk build/app/outputs/flutter-apk/Raketa-${V}-arm64.apk
+          cp build/app/outputs/flutter-apk/app-release.apk           build/app/outputs/flutter-apk/Raketa-${V}-universal.apk
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v5
         with:
           name: Raketa-apks
           path: build/app/outputs/flutter-apk/Raketa-*.apk
           retention-days: 30
 
-      - name: Create GitHub Release
+      - name: Create Release
         if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
@@ -95,8 +84,6 @@ jobs:
           body_path: CHANGELOG.md
           draft: false
           prerelease: false
-          files: |
-            build/app/outputs/flutter-apk/Raketa-*-arm64.apk
-            build/app/outputs/flutter-apk/Raketa-*-universal.apk
+          files: build/app/outputs/flutter-apk/Raketa-*.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
