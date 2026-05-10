@@ -26,13 +26,13 @@ class ProxiesSetting extends StatelessWidget {
       ProxiesSortType.name => appLocalizations.name,
     };
 
-  String getTextForProxiesLayout(ProxiesLayout proxiesLayout) => switch (proxiesLayout) {
+  String getTextForProxiesLayout(ProxiesLayout proxiesLayout) => switch (proxiesLayout as ProxiesLayout) {
       ProxiesLayout.tight => appLocalizations.tight,
       ProxiesLayout.standard => appLocalizations.standard,
       ProxiesLayout.loose => appLocalizations.loose,
     };
 
-  String _getTextWithProxiesIconStyle(ProxiesIconStyle style) => switch (style) {
+  String _getTextWithProxiesIconStyle(ProxiesIconStyle style) => switch (style as ProxiesIconStyle) {
       ProxiesIconStyle.none => appLocalizations.noIcon,
       ProxiesIconStyle.icon => appLocalizations.onlyIcon,
     };
