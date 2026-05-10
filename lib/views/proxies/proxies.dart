@@ -227,7 +227,7 @@ class _ProxiesViewState extends ConsumerState<ProxiesView> with PageMixin {
         (state) => state.type,
       ),
     );
-    return switch (proxiesType) {
+    return switch (proxiesType as ProxiesType) {
       ProxiesType.tab => ProxiesTabView(
           key: _proxiesTabKey,
         ),
@@ -239,13 +239,13 @@ class _ProxiesViewState extends ConsumerState<ProxiesView> with PageMixin {
 class _ModeSelectorAction extends ConsumerWidget {
   const _ModeSelectorAction();
 
-  String _modeLabel(BuildContext context, Mode mode) => switch (mode) {
+  String _modeLabel(BuildContext context, Mode mode) => switch (mode as Mode) {
         Mode.rule => appLocalizations.rule,
         Mode.global => appLocalizations.global,
         Mode.direct => appLocalizations.direct,
       };
 
-  IconData _modeIcon(Mode mode) => switch (mode) {
+  IconData _modeIcon(Mode mode) => switch (mode as Mode) {
         Mode.rule => Icons.rule,
         Mode.global => Icons.public,
         Mode.direct => Icons.flash_on,
