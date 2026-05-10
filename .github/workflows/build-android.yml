@@ -59,7 +59,7 @@ jobs:
 
       - name: Build APKs
         run: |
-          flutter build apk --release --target-platform android-arm64 --split-per-abi
+          flutter build apk --release --target-platform android-arm64 --split-per-abi --verbose 2>&1 | tail -100
           flutter build apk --release
 
       - name: Rename APKs
