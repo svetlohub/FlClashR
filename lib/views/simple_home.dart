@@ -240,25 +240,13 @@ class SimpleHomeView extends ConsumerStatefulWidget {
   ConsumerState<SimpleHomeView> createState() => _SimpleHomeViewState();
 }
 
-class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _pulse;
-  late final Animation<double> _pulseAnim;
+class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
 
   @override
-  void initState() {
-    super.initState();
-    _pulse = AnimationController(vsync: this, duration: const Duration(milliseconds: 2200))
-      ..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.0, end: 10.0)
-        .animate(CurvedAnimation(parent: _pulse, curve: Curves.easeInOut));
-  }
+  void dispose() { super.dispose(); }
 
-  @override
-  void dispose() { _pulse.dispose(); super.dispose(); }
-
+  // ── Pre-flight: check profile loaded before starting VPN ─────────────────
   Future<void> _toggle(bool isOn) async {
-    // Pre-flight: if user wants to START, verify a profile is loaded
     if (!isOn) {
       final profileId = ref.read(currentProfileIdProvider);
       if (profileId == null) {
@@ -275,12 +263,11 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
     } catch (e, st) {
       await CrashLogger.instance.logError(e, st);
       if (!mounted) return;
-      // Show friendly message for the "VPN configuration missing" case
       final msg = e.toString();
       if (msg.contains('VPN configuration') || msg.contains('null or empty') ||
           msg.contains('getAndroidVpnOptions')) {
         _snack(
-          '⚠️ Конфиг VPN не загружен. Переимпортируйте подписку и попробуйте снова.',
+          '⚠️ Конфиг VPN не загружен. Переимпортируйте подписку.',
           error: true,
           dur: const Duration(seconds: 8),
         );
@@ -291,153 +278,206 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
     }
   }
 
-
-
   void _snack(String msg, {bool error = false,
       Duration dur = const Duration(seconds: 4)}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: const TextStyle(color: Colors.black)),
-      backgroundColor: error ? _orange : _lime,
+      content: Text(msg, style: const TextStyle(color: Colors.black87,
+          fontWeight: FontWeight.w500)),
+      backgroundColor: error ? const Color(0xFFFF8A00) : const Color(0xFFA0E720),
       duration: dur,
+      behavior: SnackBarBehavior.floating,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
     ));
   }
 
   @override
   Widget build(BuildContext context) {
-    final isOn     = ref.watch(runTimeProvider.select((t) => t != null));
-    final isReady  = ref.watch(initProvider);
+    // Only watch the two values that actually change UI
+    final isOn    = ref.watch(runTimeProvider.select((t) => t != null));
+    final isReady = ref.watch(initProvider);
+    final isDark  = Theme.of(context).brightness == Brightness.dark;
 
-    final activeColor  = isOn ? _lime    : _slate;
-    final btnGrad      = isOn ? [_limeDk, _lime] : [_violet, _violetLt];
-    final glowColor    = isOn
-        ? _lime.withOpacity(0.30)
-        : _violet.withOpacity(0.20);
-    final bgCol        = context.bg;
-    final textPri      = context.textPri;
-    final textSec      = context.textSec;
-    final textTer      = context.textTer;
+    // Static colors — no animation math
+    final bg       = isDark ? const Color(0xFF0D1117) : const Color(0xFFF1F5F9);
+    final surface  = isDark ? const Color(0xFF161B22) : const Color(0xFFFFFFFF);
+    final border   = isDark ? const Color(0xFF30363D) : const Color(0xFFE2E8F0);
+    final textPri  = isDark ? const Color(0xFFF0F6FF) : const Color(0xFF0F172A);
+    final textSec  = isDark ? const Color(0xFF8B949E) : const Color(0xFF475569);
+    final textTer  = isDark ? const Color(0xFF484F58) : const Color(0xFF94A3B8);
+
+    // Button state
+    const emerald = Color(0xFF00703C);
+    const emeraldDk = Color(0xFF005A30);
+    const spring = Color(0xFFA0E720);
+    final btnColor = isOn ? emeraldDk : emerald;
+    final btnShadow = isOn
+        ? [BoxShadow(color: spring.withOpacity(0.35), blurRadius: 16, spreadRadius: -2, offset: const Offset(0, 4))]
+        : [BoxShadow(color: emerald.withOpacity(0.30), blurRadius: 16, spreadRadius: -2, offset: const Offset(0, 4))];
 
     return Scaffold(
-      backgroundColor: bgCol,
+      backgroundColor: bg,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 28),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
           child: Column(children: [
-            const SizedBox(height: 48),
+            const SizedBox(height: 40),
 
-            // ── Logo / icon ────────────────────────────────────────────────
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 500),
-              transitionBuilder: (child, anim) => ScaleTransition(
-                scale: Tween(begin: 0.85, end: 1.0).animate(
-                  CurvedAnimation(parent: anim, curve: Curves.elasticOut)),
-                child: FadeTransition(opacity: anim, child: child)),
-              child: _RocketIcon(
-                key: ValueKey(isOn),
-                active: isOn,
-                size: 80,
+            // ── Header card ─────────────────────────────────────────────────
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
+              decoration: BoxDecoration(
+                color: surface,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: border),
               ),
-            ),
-            const SizedBox(height: 10),
-            Text('Raketa',
-                style: TextStyle(
-                    fontSize: 44, fontWeight: FontWeight.w900,
-                    color: textPri, letterSpacing: -1.5,
-                    fontFamily: 'Roboto')),
-            const SizedBox(height: 6),
-            // Init indicator
-            AnimatedOpacity(
-              opacity: isReady ? 0 : 1,
-              duration: const Duration(milliseconds: 600),
-              child: Row(mainAxisSize: MainAxisSize.min, children: [
-                SizedBox(width: 12, height: 12,
-                    child: CircularProgressIndicator(strokeWidth: 2,
-                        color: _sky.withOpacity(0.8))),
-                const SizedBox(width: 8),
-                Text('Инициализация…',
-                    style: TextStyle(fontSize: 12, color: _sky.withOpacity(0.8))),
-              ]),
-            ),
-
-            const Spacer(),
-
-            // ── Big toggle button ──────────────────────────────────────────
-            // Glow is isolated in RepaintBoundary so pulse animation never
-            // repaints the button body (gradient + text + inkwell).
-            RepaintBoundary(
-              child: Stack(
-                children: [
-                  // Static button body — only rebuilt on isOn/isReady change
-                  AnimatedContainer(
-                    duration: const Duration(milliseconds: 350),
-                    curve: Curves.easeInOut,
-                    width: double.infinity, height: 86,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(26),
-                      gradient: LinearGradient(
-                        colors: isReady ? btnGrad : [_slate, _slate.withOpacity(0.7)],
-                        begin: Alignment.topLeft, end: Alignment.bottomRight,
-                      ),
+              child: Column(children: [
+                // Rocket icon — static, no CustomPainter blur
+                Container(
+                  width: 72, height: 72,
+                  decoration: BoxDecoration(
+                    color: isOn ? spring.withOpacity(0.15) : emerald.withOpacity(0.10),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: isOn ? spring.withOpacity(0.40) : emerald.withOpacity(0.25),
                     ),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(26),
-                        onTap: isReady ? () => _toggle(isOn) : null,
-                        child: Center(child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 300),
-                          child: isReady
-                              ? Text(
-                                  key: ValueKey(isOn),
-                                  isOn ? 'Отключить' : 'Включить',
-                                  style: const TextStyle(
-                                      fontSize: 24, fontWeight: FontWeight.bold,
-                                      color: Colors.white),
-                                )
-                              : Text('Подождите…',
-                                  style: TextStyle(fontSize: 18,
-                                color: Colors.white.withOpacity(0.6))),
-                        )),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '🚀',
+                      style: TextStyle(
+                        fontSize: isOn ? 34 : 30,
                       ),
                     ),
                   ),
-                  // Glow overlay — isolated AnimatedBuilder, only this layer repaints at 60fps
-                  if (isReady && isOn)
-                    Positioned.fill(
-                      child: IgnorePointer(
-                        child: AnimatedBuilder(
-                          animation: _pulseAnim,
-                          builder: (_, __) => DecoratedBox(
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(26),
-                              boxShadow: [BoxShadow(
-                                color: glowColor,
-                                blurRadius: 18 + _pulseAnim.value,
-                                spreadRadius: _pulseAnim.value * 0.4,
-                              )],
-                            ),
-                          ),
-                        ),
+                ),
+                const SizedBox(height: 14),
+                Text('Raketa',
+                    style: TextStyle(
+                        fontSize: 26, fontWeight: FontWeight.w900,
+                        color: textPri, letterSpacing: -0.5)),
+                const SizedBox(height: 4),
+                Text(
+                  isOn ? 'Интернет сейчас свободнее' : 'Запустите VPN',
+                  style: TextStyle(fontSize: 13, color: textSec),
+                ),
+              ]),
+            ),
+
+            const SizedBox(height: 16),
+
+            // ── Status indicator ────────────────────────────────────────────
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isOn
+                    ? spring.withOpacity(0.08)
+                    : surface,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isOn
+                      ? spring.withOpacity(0.30)
+                      : border,
+                ),
+              ),
+              child: Row(children: [
+                Container(
+                  width: 10, height: 10,
+                  decoration: BoxDecoration(
+                    color: isOn ? const Color(0xFF3F6212) : textTer,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  isOn ? 'VPN активен' : 'VPN отключён',
+                  style: TextStyle(
+                    fontSize: 14, fontWeight: FontWeight.w600,
+                    color: isOn ? const Color(0xFF3F6212) : textSec,
+                  ),
+                ),
+                const Spacer(),
+                if (!isReady)
+                  SizedBox(
+                    width: 14, height: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 1.5,
+                      color: textTer,
+                    ),
+                  ),
+              ]),
+            ),
+
+            const SizedBox(height: 12),
+
+            // ── Big connect button ──────────────────────────────────────────
+            // STATIC — no AnimationController, no pulse, no glow animation
+            // Glow is a static BoxShadow that changes only when isOn changes
+            GestureDetector(
+              onTap: isReady ? () => _toggle(isOn) : null,
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOut,
+                width: double.infinity,
+                height: 64,
+                decoration: BoxDecoration(
+                  color: isReady ? btnColor : textTer,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: isReady ? btnShadow : [],
+                ),
+                child: Center(
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 180),
+                    child: Text(
+                      key: ValueKey('$isOn$isReady'),
+                      isReady ? (isOn ? 'Отключить' : 'Включить') : 'Инициализация…',
+                      style: const TextStyle(
+                        fontSize: 17, fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
                     ),
-                ],
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 10),
 
-            const Spacer(),
+            const SizedBox(height: 24),
 
-            // ── Action buttons ─────────────────────────────────────────────
-            // Russia 2026: режимы убраны, только настройки сервисов
-            _RowBtn(icon: Icons.settings_rounded, label: 'Настройки',
-                onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const SettingsView()))),
+            // ── Action row ──────────────────────────────────────────────────
+            Row(children: [
+              Expanded(
+                child: _ActionCard(
+                  icon: Icons.add_link_rounded,
+                  label: 'Импорт',
+                  color: emerald,
+                  surface: surface,
+                  border: border,
+                  textPri: textPri,
+                  textSec: textSec,
+                  onTap: () => _showImport(context),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _ActionCard(
+                  icon: Icons.tune_rounded,
+                  label: 'Настройки',
+                  color: emerald,
+                  surface: surface,
+                  border: border,
+                  textPri: textPri,
+                  textSec: textSec,
+                  onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(builder: (_) => const SettingsView())),
+                ),
+              ),
+            ]),
 
-            const SizedBox(height: 28),
-            Text('from pavel with love ♥',
+            const SizedBox(height: 32),
+            Text('Raketa · from pavel with love ♥',
                 style: TextStyle(fontSize: 11, color: textTer)),
-            const SizedBox(height: 14),
           ]),
         ),
       ),
@@ -453,12 +493,14 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
   }
 
   Future<void> _runImport(BuildContext ctx, String url) async {
-    // maybeOf guards against stale ctx if dialog was already popped
     ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? ctrl;
     try {
       ctrl = ScaffoldMessenger.maybeOf(ctx)?.showSnackBar(const SnackBar(
-        content: _LoadingRow('Загружаем подписку…'),
+        content: Text('Загружаем подписку…',
+            style: TextStyle(color: Colors.black87)),
+        backgroundColor: Color(0xFFA0E720),
         duration: Duration(seconds: 90),
+        behavior: SnackBarBehavior.floating,
       ));
     } catch (_) {}
 
@@ -478,6 +520,54 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
     } else {
       _snack('✓ Подписка добавлена');
     }
+  }
+}
+
+// ── Static action card — no animation, no CustomPainter ──────────────────────
+class _ActionCard extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final Color surface;
+  final Color border;
+  final Color textPri;
+  final Color textSec;
+  final VoidCallback onTap;
+
+  const _ActionCard({
+    required this.icon,
+    required this.label,
+    required this.color,
+    required this.surface,
+    required this.border,
+    required this.textPri,
+    required this.textSec,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: surface,
+      borderRadius: BorderRadius.circular(14),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 14),
+          decoration: BoxDecoration(
+            border: Border.all(color: border),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+            Icon(icon, size: 18, color: color),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(
+                fontSize: 14, fontWeight: FontWeight.w600, color: textPri)),
+          ]),
+        ),
+      ),
+    );
   }
 }
 
