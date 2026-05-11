@@ -61,28 +61,23 @@ jobs:
         env:
           ANDROID_NDK: ${{ env.ANDROID_NDK }}
 
-      - name: Build APK arm64
+      - name: Build APK (arm64 only — covers 99% of Android devices)
         run: |
           flutter build apk --release \
             --target-platform android-arm64 \
             --split-per-abi
 
-      - name: Build APK universal
-        run: flutter build apk --release
-
-      - name: Rename APKs
+      - name: Rename APK and capture version
         run: |
           V=$(grep '^version:' pubspec.yaml | sed 's/version: //' | cut -d'+' -f1)
           echo "VERSION=$V" >> $GITHUB_ENV
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk \
-             build/app/outputs/flutter-apk/Raketa-${V}-arm64.apk
-          cp build/app/outputs/flutter-apk/app-release.apk \
-             build/app/outputs/flutter-apk/Raketa-${V}-universal.apk
+             build/app/outputs/flutter-apk/Raketa-${V}.apk
 
-      - name: Upload artifacts
+      - name: Upload APK artifact
         uses: actions/upload-artifact@v5
         with:
-          name: Raketa-apks
+          name: Raketa-${{ env.VERSION }}
           path: build/app/outputs/flutter-apk/Raketa-*.apk
           retention-days: 30
 
@@ -95,6 +90,6 @@ jobs:
           body_path: CHANGELOG.md
           draft: false
           prerelease: false
-          files: build/app/outputs/flutter-apk/Raketa-*.apk
+          files: build/app/outputs/flutter-apk/Raketa-${{ env.VERSION }}.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
