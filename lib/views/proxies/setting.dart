@@ -9,18 +9,18 @@ import 'package:intl/intl.dart';
 class ProxiesSetting extends StatelessWidget {
   const ProxiesSetting({super.key});
 
-  IconData _getIconWithProxiesType(ProxiesType type) => switch (type) {
+  IconData _getIconWithProxiesType(ProxiesType type) => switch (type as ProxiesType) {
       ProxiesType.tab => Icons.view_carousel,
       ProxiesType.list => Icons.view_list,
     };
 
-  IconData _getIconWithProxiesSortType(ProxiesSortType type) => switch (type) {
+  IconData _getIconWithProxiesSortType(ProxiesSortType type) => switch (type as ProxiesSortType) {
       ProxiesSortType.none => Icons.sort,
       ProxiesSortType.delay => Icons.network_ping,
       ProxiesSortType.name => Icons.sort_by_alpha,
     };
 
-  String _getStringProxiesSortType(ProxiesSortType type) => switch (type) {
+  String _getStringProxiesSortType(ProxiesSortType type) => switch (type as ProxiesSortType) {
       ProxiesSortType.none => appLocalizations.defaultText,
       ProxiesSortType.delay => appLocalizations.delay,
       ProxiesSortType.name => appLocalizations.name,
