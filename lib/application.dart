@@ -11,6 +11,8 @@ import 'package:flclashx/plugins/app.dart';
 import 'package:flclashx/providers/providers.dart';
 import 'package:flclashx/state.dart';
 import 'package:flclashx/views/simple_home.dart';
+import 'package:flclashx/theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -43,6 +45,10 @@ class ApplicationState extends ConsumerState<Application> {
   @override
   void initState() {
     super.initState();
+
+    // Disable runtime font fetching — use bundled fonts from google_fonts package
+    // This prevents network requests for fonts on first launch
+    GoogleFonts.config.allowRuntimeFetching = false;
 
     _autoUpdateGroupTask();
     _autoUpdateProfilesTask();
@@ -139,19 +145,10 @@ class ApplicationState extends ConsumerState<Application> {
                 locale: utils.getLocaleForString(locale),
                 supportedLocales: AppLocalizations.delegate.supportedLocales,
                 themeMode: themeProps.themeMode,
-                theme: ThemeData(
-                  useMaterial3: true,
-                  pageTransitionsTheme: _pageTransitionsTheme,
-                  colorScheme: _getAppColorScheme(brightness: Brightness.light),
-                  visualDensity: VisualDensity.adaptivePlatformDensity,
-                ),
-                darkTheme: ThemeData(
-                  useMaterial3: true,
-                  pageTransitionsTheme: _pageTransitionsTheme,
-                  colorScheme: _getAppColorScheme(brightness: Brightness.dark)
-                      .toPureBlack(themeProps.pureBlack),
-                  visualDensity: VisualDensity.adaptivePlatformDensity,
-                ),
+                theme: AppTheme.light(
+                    pageTransitions: _pageTransitionsTheme),
+                darkTheme: AppTheme.dark(
+                    pageTransitions: _pageTransitionsTheme),
                 home: child,
               );
             },
