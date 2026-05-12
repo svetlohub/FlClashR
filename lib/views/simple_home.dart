@@ -28,18 +28,10 @@ const _sky        = AppColors.violet;
 const _arctic     = AppColors.lime;
 const _orange     = AppColors.orange;
 
-// Kept for backward compat with palette code below — mapped to brand
-const _violet    = _emerald;        
-const _violetLt  = _emeraldLt;     
-const _lime      = _spring;        
-const _limeDk    = _springDk;      
-const _slate      = AppColors.lightT2;
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Theme helper — delegates to AppColors for consistency
 // ─────────────────────────────────────────────────────────────────────────────
 extension _ThemeX on BuildContext {
-  // isDark удален отсюда, так как он есть в BuildContextThemeX (app_theme.dart)
   Color get _bg      => isDark ? AppColors.darkBg        : AppColors.lightBg;
   Color get _surf    => isDark ? AppColors.darkSurface   : AppColors.lightSurface;
   Color get _t1      => isDark ? AppColors.darkT1        : AppColors.lightT1;
@@ -48,8 +40,74 @@ extension _ThemeX on BuildContext {
   Color get _border  => isDark ? AppColors.darkBorder    : AppColors.lightBorder;
 }
 
-// ... (функция doProfileImport и хелперы остаются без изменений до SimpleHomeView)
+// ─── Shared import helper ───────────────────────────────────────────────────
+Future<void> doProfileImport({
+  required String url,
+  required WidgetRef ref,
+  required BuildContext context,
+}) async {
+  if (!globalState.appState.isInit) {
+    bool ready = false;
+    for (int i = 0; i < 40; i++) {
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (globalState.appState.isInit) { ready = true; break; }
+    }
+    if (!ready) {
+      throw 'Ядро VPN ещё не готово. Подождите несколько секунд и попробуйте снова.';
+    }
+  }
 
+  final prefs  = await SharedPreferences.getInstance();
+  final sendHd = prefs.getBool('sendDeviceHeaders') ?? true;
+  final base   = Profile.normal(url: url);
+
+  Profile? profile;
+  Object? firstError;
+  try {
+    profile = await base
+        .update(shouldSendHeaders: sendHd)
+        .timeout(const Duration(seconds: 60),
+            onTimeout: () => throw 'Превышено время ожидания (60 с).');
+  } catch (e) { firstError = e; }
+
+  if (profile == null) {
+    Uint8List? rawBytes;
+    try {
+      final resp = await request
+          .getFileResponseForUrl(url)
+          .timeout(const Duration(seconds: 30));
+      rawBytes = resp.data;
+    } catch (e) { throw firstError ?? e; }
+
+    if (rawBytes == null || rawBytes.isEmpty) {
+      throw firstError ?? 'Пустой ответ сервера.';
+    }
+
+    final rawText = utf8.decode(rawBytes, allowMalformed: true).trim();
+
+    if (rawText.toLowerCase().startsWith('<!doctype') || rawText.toLowerCase().startsWith('<html')) {
+      throw 'Сервер вернул HTML вместо подписки. Проверьте ссылку.';
+    }
+
+    final String yaml;
+    try {
+      yaml = convertSubscriptionToClashYaml(rawText);
+      profile = await base.saveFileWithString(yaml);
+    } catch (e) {
+      throw 'Ошибка обработки подписки: $e';
+    }
+  }
+
+  ref.read(profilesProvider.notifier).setProfile(profile!);
+  if (ref.read(currentProfileIdProvider) == null) {
+    ref.read(currentProfileIdProvider.notifier).value = profile.id;
+  }
+  applyRussia2026Preset(ref);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Home screen
+// ─────────────────────────────────────────────────────────────────────────────
 class SimpleHomeView extends ConsumerStatefulWidget {
   const SimpleHomeView({super.key});
   @override
@@ -58,18 +116,11 @@ class SimpleHomeView extends ConsumerStatefulWidget {
 
 class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
 
-  @override
-  void dispose() { super.dispose(); }
-
   Future<void> _toggle(bool isOn) async {
     if (!isOn) {
       final profileId = ref.read(currentProfileIdProvider);
       if (profileId == null) {
-        _snack(
-          '⚠️ Сначала импортируйте подписку. VPN не может запуститься без конфига.',
-          error: true,
-          dur: const Duration(seconds: 6),
-        );
+        _snack('⚠️ Сначала импортируйте подписку.', error: true);
         return;
       }
     }
@@ -77,28 +128,14 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
       await globalState.appController.updateStatus(!isOn);
     } catch (e, st) {
       await CrashLogger.instance.logError(e, st);
-      if (!mounted) return;
-      final msg = e.toString();
-      if (msg.contains('VPN configuration') || msg.contains('null or empty') ||
-          msg.contains('getAndroidVpnOptions')) {
-        _snack(
-          '⚠️ Конфиг VPN не загружен. Переимпортируйте подписку.',
-          error: true,
-          dur: const Duration(seconds: 8),
-        );
-      } else {
-        final display = msg.length > 200 ? '${msg.substring(0, 200)}…' : msg;
-        _snack('Ошибка: $display', error: true);
-      }
+      _snack('Ошибка: $e', error: true);
     }
   }
 
-  void _snack(String msg, {bool error = false,
-      Duration dur = const Duration(seconds: 4)}) {
+  void _snack(String msg, {bool error = false, Duration dur = const Duration(seconds: 4)}) {
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-      content: Text(msg, style: const TextStyle(color: Colors.black87,
-          fontWeight: FontWeight.w500)),
+      content: Text(msg, style: const TextStyle(color: Colors.black87, fontWeight: FontWeight.w500)),
       backgroundColor: error ? AppColors.orange : AppColors.lime,
       duration: dur,
       behavior: SnackBarBehavior.floating,
@@ -106,12 +143,35 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
     ));
   }
 
+  // --- МЕТОДЫ ИМПОРТА (Которых не хватало) ---
+  void _showImport(BuildContext ctx) {
+    showDialog<void>(context: ctx,
+        builder: (d) => ImportDialog(onImport: (url) async {
+          Navigator.of(d).pop();
+          await _runImport(ctx, url);
+        }));
+  }
+
+  Future<void> _runImport(BuildContext ctx, String url) async {
+    ScaffoldMessenger.of(ctx).showSnackBar(const SnackBar(
+      content: Text('Загружаем подписку…', style: TextStyle(color: Colors.black87)),
+      backgroundColor: AppColors.lime,
+      behavior: SnackBarBehavior.floating,
+    ));
+
+    try {
+      await doProfileImport(url: url, ref: ref, context: ctx);
+      _snack('Подписка успешно обновлена!');
+    } catch (e) {
+      _snack('Ошибка импорта: $e', error: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isOn    = ref.watch(runTimeProvider.select((t) => t != null));
     final isReady = ref.watch(initProvider);
-    // Использование глобального isDark из app_theme.dart
-    final isDark  = context.isDark; 
+    final isDark  = context.isDark;
 
     final bg        = isDark ? AppColors.darkBg : AppColors.lightBg;
     final surface   = isDark ? AppColors.darkSurface : AppColors.lightSurface;
@@ -150,18 +210,10 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
                       color: isOn ? AppColors.lime.withOpacity(0.40) : AppColors.violet.withOpacity(0.25),
                     ),
                   ),
-                  child: Center(
-                    child: Text(
-                      '🚀',
-                      style: TextStyle(
-                        fontSize: isOn ? 34 : 30,
-                      ),
-                    ),
-                  ),
+                  child: const Center(child: Text('🚀', style: TextStyle(fontSize: 32))),
                 ),
                 const SizedBox(height: 14),
-                Text('Raketa',
-                    style: AppFonts.logo(textPri).copyWith(fontSize: 26)),
+                Text('Raketa', style: AppFonts.logo(textPri).copyWith(fontSize: 26)),
                 const SizedBox(height: 4),
                 Text(
                   isOn ? 'Интернет сейчас свободнее' : 'Запустите VPN',
@@ -176,15 +228,9 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isOn
-                    ? AppColors.lime.withOpacity(0.08)
-                    : surface,
+                color: isOn ? AppColors.lime.withOpacity(0.08) : surface,
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: isOn
-                      ? AppColors.lime.withOpacity(0.30)
-                      : border,
-                ),
+                border: Border.all(color: isOn ? AppColors.lime.withOpacity(0.30) : border),
               ),
               child: Row(children: [
                 Container(
@@ -197,20 +243,11 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
                 const SizedBox(width: 10),
                 Text(
                   isOn ? 'VPN активен' : 'VPN отключён',
-                  style: TextStyle(
-                    fontSize: 14, fontWeight: FontWeight.w600,
-                    color: isOn ? AppColors.limeText : textSec,
-                  ),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: isOn ? AppColors.limeText : textSec),
                 ),
                 const Spacer(),
                 if (!isReady)
-                  SizedBox(
-                    width: 14, height: 14,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 1.5,
-                      color: textTer,
-                    ),
-                  ),
+                  SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 1.5, color: textTer)),
               ]),
             ),
 
@@ -220,7 +257,6 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
               onTap: isReady ? () => _toggle(isOn) : null,
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 220),
-                curve: Curves.easeOut,
                 width: double.infinity,
                 height: 64,
                 decoration: BoxDecoration(
@@ -229,13 +265,9 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
                   boxShadow: isReady ? btnShadow : [],
                 ),
                 child: Center(
-                  child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 180),
-                    child: Text(
-                      key: ValueKey('$isOn$isReady'),
-                      isReady ? (isOn ? 'Отключить' : 'Включить') : 'Инициализация…',
-                      style: AppFonts.btnPrimary(Colors.white),
-                    ),
+                  child: Text(
+                    isReady ? (isOn ? 'Отключить' : 'Включить') : 'Инициализация…',
+                    style: AppFonts.btnPrimary(Colors.white),
                   ),
                 ),
               ),
@@ -248,11 +280,10 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
                 child: _ActionCard(
                   icon: Icons.add_link_rounded,
                   label: 'Импорт',
-                  color: AppColors.lime, // Исправлено: заменено emerald
+                  color: AppColors.lime,
                   surface: surface,
                   border: border,
                   textPri: textPri,
-                  textSec: textSec,
                   onTap: () => _showImport(context),
                 ),
               ),
@@ -261,30 +292,25 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
                 child: _ActionCard(
                   icon: Icons.tune_rounded,
                   label: 'Настройки',
-                  color: AppColors.lime, // Исправлено: заменено emerald
+                  color: AppColors.lime,
                   surface: surface,
                   border: border,
                   textPri: textPri,
-                  textSec: textSec,
                   onTap: () => Navigator.of(context).push(
-                      MaterialPageRoute(builder: (_) => const Scaffold())), // Временная заглушка
+                      MaterialPageRoute(builder: (_) => const SettingsView())),
                 ),
               ),
             ]),
 
             const SizedBox(height: 32),
-            Text('Raketa · from pavel with love ♥',
-                style: AppFonts.caption(textTer)),
+            Text('Raketa · from pavel with love ♥', style: AppFonts.caption(textTer)),
           ]),
         ),
       ),
     );
   }
-  
-  // ... (остальные методы класса)
 }
 
-// Вспомогательный виджет карточки действия
 class _ActionCard extends StatelessWidget {
   final IconData icon;
   final String label;
@@ -292,7 +318,6 @@ class _ActionCard extends StatelessWidget {
   final Color surface;
   final Color border;
   final Color textPri;
-  final Color textSec;
   final VoidCallback onTap;
 
   const _ActionCard({
@@ -302,7 +327,6 @@ class _ActionCard extends StatelessWidget {
     required this.surface,
     required this.border,
     required this.textPri,
-    required this.textSec,
     required this.onTap,
   });
 
