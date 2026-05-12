@@ -27,7 +27,7 @@ import 'package:google_fonts/google_fonts.dart';
 // Warning/Error: orange #FF8A00
 
 const _emerald   = AppColors.violet;
-const _emeraldLt = AppColors.violetLight;
+const _emeraldLt = Color(0xFFDDD6FE);
 const _spring    = AppColors.lime;
 const _springDk  = AppColors.limeDark;
 const _sky       = AppColors.violet;
@@ -447,7 +447,7 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
                 child: _ActionCard(
                   icon: Icons.add_link_rounded,
                   label: 'Импорт',
-                  color: emerald,
+                  color: const Color(0xFF10B981),
                   surface: surface,
                   border: border,
                   textPri: textPri,
@@ -460,7 +460,7 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
                 child: _ActionCard(
                   icon: Icons.tune_rounded,
                   label: 'Настройки',
-                  color: emerald,
+                  color: const Color(0xFF10B981),
                   surface: surface,
                   border: border,
                   textPri: textPri,
@@ -1352,7 +1352,7 @@ class _RocketPainter extends CustomPainter {
   // Brand palette
   static const _emerald = AppColors.violet;
   static const _spring  = Color(0xFFA0E720);
-  static const _sky     = AppColors.violetBorder;
+  static const _sky     = Color(0xFFC4B5FD);
   static const _slate   = AppColors.lightT3;
 
   @override
