@@ -22,14 +22,8 @@ ClashConfig _$ClashConfigFromJson(Map<String, dynamic> json) {
 mixin _$ClashConfig {
   int get port => throw _privateConstructorUsedError;
   int get socksPort => throw _privateConstructorUsedError;
-  int get redirPort => throw _privateConstructorUsedError;
-  int get tproxyPort => throw _privateConstructorUsedError;
-  int get mixedPort => throw _privateConstructorUsedError;
-  bool get allowLan => throw _privateConstructorUsedError;
   String get mode => throw _privateConstructorUsedError;
   String get logLevel => throw _privateConstructorUsedError;
-  String get externalController => throw _privateConstructorUsedError;
-  String get secret => throw _privateConstructorUsedError;
 
   /// Serializes this ClashConfig to a JSON map.
   Map<String, dynamic> toJson() => throw _privateConstructorUsedError;
@@ -47,17 +41,7 @@ abstract class $ClashConfigCopyWith<$Res> {
           ClashConfig value, $Res Function(ClashConfig) then) =
       _$ClashConfigCopyWithImpl<$Res, ClashConfig>;
   @useResult
-  $Res call(
-      {int port,
-      int socksPort,
-      int redirPort,
-      int tproxyPort,
-      int mixedPort,
-      bool allowLan,
-      String mode,
-      String logLevel,
-      String externalController,
-      String secret});
+  $Res call({int port, int socksPort, String mode, String logLevel});
 }
 
 /// @nodoc
@@ -77,14 +61,8 @@ class _$ClashConfigCopyWithImpl<$Res, $Val extends ClashConfig>
   $Res call({
     Object? port = null,
     Object? socksPort = null,
-    Object? redirPort = null,
-    Object? tproxyPort = null,
-    Object? mixedPort = null,
-    Object? allowLan = null,
     Object? mode = null,
     Object? logLevel = null,
-    Object? externalController = null,
-    Object? secret = null,
   }) {
     return _then(_value.copyWith(
       port: null == port
@@ -95,22 +73,6 @@ class _$ClashConfigCopyWithImpl<$Res, $Val extends ClashConfig>
           ? _value.socksPort
           : socksPort // ignore: cast_nullable_to_non_nullable
               as int,
-      redirPort: null == redirPort
-          ? _value.redirPort
-          : redirPort // ignore: cast_nullable_to_non_nullable
-              as int,
-      tproxyPort: null == tproxyPort
-          ? _value.tproxyPort
-          : tproxyPort // ignore: cast_nullable_to_non_nullable
-              as int,
-      mixedPort: null == mixedPort
-          ? _value.mixedPort
-          : mixedPort // ignore: cast_nullable_to_non_nullable
-              as int,
-      allowLan: null == allowLan
-          ? _value.allowLan
-          : allowLan // ignore: cast_nullable_to_non_nullable
-              as bool,
       mode: null == mode
           ? _value.mode
           : mode // ignore: cast_nullable_to_non_nullable
@@ -118,14 +80,6 @@ class _$ClashConfigCopyWithImpl<$Res, $Val extends ClashConfig>
       logLevel: null == logLevel
           ? _value.logLevel
           : logLevel // ignore: cast_nullable_to_non_nullable
-              as String,
-      externalController: null == externalController
-          ? _value.externalController
-          : externalController // ignore: cast_nullable_to_non_nullable
-              as String,
-      secret: null == secret
-          ? _value.secret
-          : secret // ignore: cast_nullable_to_non_nullable
               as String,
     ) as $Val);
   }
@@ -139,17 +93,7 @@ abstract class _$$ClashConfigImplCopyWith<$Res>
       __$$ClashConfigImplCopyWithImpl<$Res>;
   @override
   @useResult
-  $Res call(
-      {int port,
-      int socksPort,
-      int redirPort,
-      int tproxyPort,
-      int mixedPort,
-      bool allowLan,
-      String mode,
-      String logLevel,
-      String externalController,
-      String secret});
+  $Res call({int port, int socksPort, String mode, String logLevel});
 }
 
 /// @nodoc
@@ -167,14 +111,8 @@ class __$$ClashConfigImplCopyWithImpl<$Res>
   $Res call({
     Object? port = null,
     Object? socksPort = null,
-    Object? redirPort = null,
-    Object? tproxyPort = null,
-    Object? mixedPort = null,
-    Object? allowLan = null,
     Object? mode = null,
     Object? logLevel = null,
-    Object? externalController = null,
-    Object? secret = null,
   }) {
     return _then(_$ClashConfigImpl(
       port: null == port
@@ -185,22 +123,6 @@ class __$$ClashConfigImplCopyWithImpl<$Res>
           ? _value.socksPort
           : socksPort // ignore: cast_nullable_to_non_nullable
               as int,
-      redirPort: null == redirPort
-          ? _value.redirPort
-          : redirPort // ignore: cast_nullable_to_non_nullable
-              as int,
-      tproxyPort: null == tproxyPort
-          ? _value.tproxyPort
-          : tproxyPort // ignore: cast_nullable_to_non_nullable
-              as int,
-      mixedPort: null == mixedPort
-          ? _value.mixedPort
-          : mixedPort // ignore: cast_nullable_to_non_nullable
-              as int,
-      allowLan: null == allowLan
-          ? _value.allowLan
-          : allowLan // ignore: cast_nullable_to_non_nullable
-              as bool,
       mode: null == mode
           ? _value.mode
           : mode // ignore: cast_nullable_to_non_nullable
@@ -208,14 +130,6 @@ class __$$ClashConfigImplCopyWithImpl<$Res>
       logLevel: null == logLevel
           ? _value.logLevel
           : logLevel // ignore: cast_nullable_to_non_nullable
-              as String,
-      externalController: null == externalController
-          ? _value.externalController
-          : externalController // ignore: cast_nullable_to_non_nullable
-              as String,
-      secret: null == secret
-          ? _value.secret
-          : secret // ignore: cast_nullable_to_non_nullable
               as String,
     ));
   }
@@ -227,14 +141,8 @@ class _$ClashConfigImpl implements _ClashConfig {
   const _$ClashConfigImpl(
       {this.port = 7890,
       this.socksPort = 7891,
-      this.redirPort = 0,
-      this.tproxyPort = 0,
-      this.mixedPort = 0,
-      this.allowLan = true,
       this.mode = "rule",
-      this.logLevel = "info",
-      this.externalController = "127.0.0.1:9090",
-      this.secret = ""});
+      this.logLevel = "info"});
 
   factory _$ClashConfigImpl.fromJson(Map<String, dynamic> json) =>
       _$$ClashConfigImplFromJson(json);
@@ -247,32 +155,14 @@ class _$ClashConfigImpl implements _ClashConfig {
   final int socksPort;
   @override
   @JsonKey()
-  final int redirPort;
-  @override
-  @JsonKey()
-  final int tproxyPort;
-  @override
-  @JsonKey()
-  final int mixedPort;
-  @override
-  @JsonKey()
-  final bool allowLan;
-  @override
-  @JsonKey()
   final String mode;
   @override
   @JsonKey()
   final String logLevel;
-  @override
-  @JsonKey()
-  final String externalController;
-  @override
-  @JsonKey()
-  final String secret;
 
   @override
   String toString() {
-    return 'ClashConfig(port: $port, socksPort: $socksPort, redirPort: $redirPort, tproxyPort: $tproxyPort, mixedPort: $mixedPort, allowLan: $allowLan, mode: $mode, logLevel: $logLevel, externalController: $externalController, secret: $secret)';
+    return 'ClashConfig(port: $port, socksPort: $socksPort, mode: $mode, logLevel: $logLevel)';
   }
 
   @override
@@ -283,36 +173,14 @@ class _$ClashConfigImpl implements _ClashConfig {
             (identical(other.port, port) || other.port == port) &&
             (identical(other.socksPort, socksPort) ||
                 other.socksPort == socksPort) &&
-            (identical(other.redirPort, redirPort) ||
-                other.redirPort == redirPort) &&
-            (identical(other.tproxyPort, tproxyPort) ||
-                other.tproxyPort == tproxyPort) &&
-            (identical(other.mixedPort, mixedPort) ||
-                other.mixedPort == mixedPort) &&
-            (identical(other.allowLan, allowLan) ||
-                other.allowLan == allowLan) &&
             (identical(other.mode, mode) || other.mode == mode) &&
             (identical(other.logLevel, logLevel) ||
-                other.logLevel == logLevel) &&
-            (identical(other.externalController, externalController) ||
-                other.externalController == externalController) &&
-            (identical(other.secret, secret) || other.secret == secret));
+                other.logLevel == logLevel));
   }
 
   @JsonKey(includeFromJson: false, includeToJson: false)
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      port,
-      socksPort,
-      redirPort,
-      tproxyPort,
-      mixedPort,
-      allowLan,
-      mode,
-      logLevel,
-      externalController,
-      secret);
+  int get hashCode => Object.hash(runtimeType, port, socksPort, mode, logLevel);
 
   /// Create a copy of ClashConfig
   /// with the given fields replaced by the non-null parameter values.
@@ -334,14 +202,8 @@ abstract class _ClashConfig implements ClashConfig {
   const factory _ClashConfig(
       {final int port,
       final int socksPort,
-      final int redirPort,
-      final int tproxyPort,
-      final int mixedPort,
-      final bool allowLan,
       final String mode,
-      final String logLevel,
-      final String externalController,
-      final String secret}) = _$ClashConfigImpl;
+      final String logLevel}) = _$ClashConfigImpl;
 
   factory _ClashConfig.fromJson(Map<String, dynamic> json) =
       _$ClashConfigImpl.fromJson;
@@ -351,21 +213,9 @@ abstract class _ClashConfig implements ClashConfig {
   @override
   int get socksPort;
   @override
-  int get redirPort;
-  @override
-  int get tproxyPort;
-  @override
-  int get mixedPort;
-  @override
-  bool get allowLan;
-  @override
   String get mode;
   @override
   String get logLevel;
-  @override
-  String get externalController;
-  @override
-  String get secret;
 
   /// Create a copy of ClashConfig
   /// with the given fields replaced by the non-null parameter values.
