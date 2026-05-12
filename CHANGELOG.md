@@ -1,0 +1,1059 @@
+## [1.1.0] — 2026-05-12
+
+### Design System — full spec implementation
+- **Fonts**: Syne (display/headings) + DM Sans (body/UI) via google_fonts package
+- **Colors**: Full spec palette — violet, lime, orange, sky, surface, bg, t1/t2/t3
+- **Typography**: AppFonts helpers — logo (Syne 800), heading (Syne 800), cardHeadline (Syne 700), body (DM Sans 400), bodyMedium (DM Sans 500), btnPrimary (DM Sans 700), fieldLabel (DM Sans 700 uppercase), caption (DM Sans 400)
+- **Zero hardcoded colors**: all references via AppColors constants
+- **No BackdropFilter**: removed glassmorphism blur from Settings cards — was main freeze source
+
+### Performance
+- `_Card` widget: removed `BackdropFilter(sigma=12)` — eliminated jank in Settings screen
+- All animations: only `AnimatedContainer` (220ms easeOut) for button state, `AnimatedSwitcher` (180ms) for text
+- No `repeat()` animations in idle state — zero continuous repaints
+
+### Fixes
+- Play Protect: `network_security_config.xml` — user CAs moved to `<debug-overrides>` only
+- Telegram DNS: added AdGuard DoH (94.140.14.14) + Cloudflare DoT (tls://1.1.1.1) fallbacks
+- Proxy failover: connect timeout reduced 7s → 3s
+
+# Changelog
+
+## [1.0.0] — 2026-05-10 🚀 Initial Release
+
+### What is Raketa?
+Raketa is a free, open-source VPN client for Android that gives you smart traffic routing.
+Only the services that need it (Telegram, YouTube, WhatsApp) go through VPN. Everything else — banks, Russian sites, streaming — goes direct. No slowdowns, no battery drain.
+
+### Features
+- ✅ **Smart Russia routing** — Telegram, YouTube, WhatsApp through VPN by default; all other traffic direct
+- ✅ **One-tap VPN** — tap once, connects in seconds
+- ✅ **Subscription import** — paste any Clash YAML, base64, or proxy URI link
+- ✅ **Auto server selection** — pings all servers on connect, picks the fastest
+- ✅ **24h auto-refresh** — subscription updates silently in background
+- ✅ **QUIC blocking** — forces TCP for better proxy compatibility
+- ✅ **Light/dark theme** — follows device setting automatically
+- ✅ **Persistent notification** with Disconnect and Reconnect buttons
+- ✅ Based on [Mihomo (Clash Meta)](https://github.com/MetaCubeX/mihomo) core
+
+### Technical
+- Minimum Android: 6.0 (API 23)
+- Architecture: arm64-v8a, x86_64
+- APK size: ~25MB
+
+---
+
+*Based on FlClashX • Routing rules from RoscomVPN community*
+
+---
+
+*Based on FlClashX • Routing rules from RoscomVPN community*
+
+## Raketa 2026-05-06 (rebrand from FlClashR)
+
+- rebrand: all user-visible strings FlClashR/FlClashX → Raketa (22 files)
+- rebrand: app name in strings.xml → "Raketa"; notification channels: "Raketa", "Raketa_Subscription"
+- rebrand: lock file, socket path, isolate names, log prefix → Raketa* naming
+- rebrand: pubspec.yaml description updated
+- feat(icon): main screen shield icon replaced with custom _RocketIcon (CustomPainter)
+  - Active: emerald→spring gradient rocket body, sky-blue porthole, spring-yellow flame with white core, glow halo
+  - Inactive: slate-gray outline rocket
+  - Animated transition: ScaleTransition with elasticOut + FadeTransition
+- feat(icon): Android notification/tile icon (ic.xml) → white rocket silhouette
+- feat(icon): Launcher adaptive icon foreground → white rocket with emerald fins + sky porthole
+- feat(icon): Launcher adaptive icon background → deep space dark (#0D1F17) with star field
+
+## FlClashR 2026-05-06 (5-issue batch)
+
+- fix(vpn-start): await `applyProfile(silence:true)` in `updateStatus(true)` before `handleStart()` — prevents "VPN configuration is missing" when Go core hasn't loaded config yet
+- feat(preset): Russia 2026 preset now auto-applies immediately after import via `doProfileImport`; also auto-applies in `_initCore` if profile exists without overrideData
+- feat(ui): removed "Режимы" button from main screen — only "Настройки" remains
+- fix(persistence): `setProfile()` and `CurrentProfileId.onUpdate` now call `savePreferencesDebounce()` — profile and subscription key no longer lost on app force-kill (Android OOM death bypasses `paused`/`inactive` lifecycle)
+- fix(notification): `_getDefaultForegroundParams()` in `vpn.dart` now returns Russian title "Интернет сейчас свободнее" — was returning "FlClashX" which overwrote the Kotlin builder strings every second
+- fix(apk-install): `android:testOnly="false"` + `tools:replace="android:testOnly"` in AndroidManifest.xml prevents Flutter debug toolchain from injecting testOnly=true flag that triggers Play Protect warning
+
+## FlClashR 2026-05-05 (4-task session)
+
+- fix(rules): "proxy [PROXY] not found" crash — `state.dart patchRawConfig` now calls `_resolveProxyGroupName()` to detect real proxy group name from `rawConfig['proxy-groups']` before injecting override rules; replaces `,PROXY,` → `,<real name>,` in all rule strings
+- fix(rules): `_resolveProxyGroupName` priority: (1) group named "select"/"proxy", (2) url-test/fallback type, (3) first group, (4) literal "PROXY" fallback
+- fix(ui): snackbar text contrast — all `_snack()` calls now set `TextStyle(color: Colors.black)` on success/error snackbars (lime/orange backgrounds)
+- feat(notification): `BaseServiceInterface.kt` — added `setContentText("Интернет стал немного свободнее")` below existing title
+- fix(toggles): `_loadFromProfile()` no longer checks `r.contains('PROXY')` to detect enabled services (breaks after group name substitution); now checks `!r.endsWith(',DIRECT')` instead
+
+## FlClashR 2026-05-04 (lib.go Port→Callback fix)
+
+- fix(core): `lib.go` — remove `ActionResult.Port` references (3 errors at lines 56, 72, 83)
+- refactor(core): `send()` now reads port via `portFromCallback(result.Callback)` instead of `result.Port`
+- refactor(core): `invokeAction` stores heap-allocated `int64` port in `ActionResult.Callback unsafe.Pointer`
+- refactor(core): `sendMessage` uses same Callback pattern for `messagePort`
+- chore: all other `ActionResult{}` literals in `server.go` were already clean (no Port field)
+
+## FlClashR 2026-05-04 (upstream sync)
+
+- chore(ci): bump `actions/setup-go` v5→v6, `actions/upload-artifact` v4→v5, `actions/download-artifact` v4→v5 in `build-android.yml` and `build.yaml`
+- refactor(core): `ActionResult.Port int64` replaced with `Callback unsafe.Pointer` (tagged `json:"-"`) — no Dart-side changes needed, boundary is JSON not raw memory
+- feat(core): add `getCoreVersionMethod` constant + handler in `handleAction` (`result.success(constant.Version)`) — exposes Mihomo version via FFI to Dart
+- chore(core): add `unsafe` and `github.com/metacubex/mihomo/constant` imports to `action.go`
+- skip: upstream `build-core.yaml` — not applicable (we embed .so in APK, no separate core binary release)
+
+## FlClashR 2026-05-04 (session patch)
+
+- fix: VPN start crash "VPN options data is null or empty" — `service.dart` now null-guards `getAndroidVpnOptions()` and throws descriptive Exception before calling platform channel
+- fix: `_toggle` in SimpleHomeView pre-checks `currentProfileIdProvider != null` before starting — shows RU error snackbar instead of crashing
+- fix: theme default changed from `ThemeMode.dark` to `ThemeMode.system` in `ThemeProps` — app now auto-follows device light/dark setting on fresh install
+- feat: VPN notification title → "Интернет сейчас свободнее"; added "Переподключить" action button (RECONNECT in TempActivity → handleStop + handleStart)
+- fix: Telegram routing — added missing DC subnets (91.108.12.0/22, 91.108.16.0/22, 91.108.36.0/22, 185.76.144.0/22, 2001:67c:4e8:f003::/64); removed broad /16 supernet; added keyword fallback
+- docs: new bilingual README.md with badges, features, quick-start, architecture diagram, contributing guide
+
+## FlClashR 2026-05-03 (session patch)
+
+- fix: subscription import spinner never stops when ScaffoldMessenger ctx is stale — use `maybeOf` + nullable ctrl with guarded close
+- fix: import error message truncated to 200 chars to prevent unreadable snackbar overflow
+- fix: Instagram Russia preset missing Meta/Facebook CDN domains (fbcdn.net, fbsbx.com, facebook.com, fb.com, connect.facebook.net) — media (stories/reels) loaded blank
+- fix: Telegram IPv6 IP ranges (2001:b28::/48 etc.) now emit `IP-CIDR6` rule type in Mihomo; previously used `IP-CIDR` which silently drops IPv6 addresses
+- feat: auto-refresh service and theme system were already complete from prior session (no changes)
+
+## v0.8.86
+
+- Fix windows tun issues
+
+- Optimize android get system dns
+
+- Optimize more details
+
+- Update changelog
+
+## v0.8.85
+
+- Support override script
+
+- Support proxies search
+
+- Support svg display
+
+- Optimize config persistence
+
+- Add some scenes auto close connections
+
+- Update core
+
+- Optimize more details
+
+## v0.8.84
+
+- Fix windows service verify issues
+
+- Update changelog
+
+## v0.8.83
+
+- Add windows server mode start process verify
+
+- Add linux deb dependencies
+
+- Add backup recovery strategy select
+
+- Support custom text scaling
+
+- Optimize the display of different text scale
+
+- Optimize windows setup experience
+
+- Optimize startTun performance
+
+- Optimize android tv experience
+
+- Optimize default option
+
+- Optimize computed text size
+
+- Optimize hyperOS freeform window
+
+- Add developer mode
+
+- Update core
+
+- Optimize more details
+
+- Add issues template
+
+- Update changelog
+
+## v0.8.82
+
+- Optimize android vpn performance
+
+- Add custom primary color and color scheme
+
+- Add linux nad windows arm release
+
+- Optimize requests and logs page
+
+- Fix map input page delete issues
+
+- Update changelog
+
+## v0.8.81
+
+- Add rule override
+
+- Update core
+
+- Optimize more details
+
+- Update changelog
+
+## v0.8.80
+
+- Optimize dashboard performance
+
+- Fix some issues
+
+- Fix unselected proxy group delay issues
+
+- Fix asn url issues
+
+- Update changelog
+
+## v0.8.79
+
+- Fix tab delay view issues
+
+- Fix tray action issues
+
+- Fix get profile redirect client ua issues
+
+- Fix proxy card delay view issues
+
+- Add Russian, Japanese adaptation
+
+- Fix some issues
+
+- Update changelog
+
+## v0.8.78
+
+- Fix list form input view issues
+
+- Fix traffic view issues
+
+- Update changelog
+
+## v0.8.77
+
+- Optimize performance
+
+- Update core
+
+- Optimize core stability
+
+- Fix linux tun authority check error
+
+- Fix some issues
+
+- Fix scroll physics error
+
+- Update changelog
+
+## v0.8.75
+
+- Add windows storage corruption detection
+
+- Fix core crash caused by windows resource manager restart
+
+- Optimize logs, requests, access to pages
+
+- Fix macos bypass domain issues
+
+- Update changelog
+
+## v0.8.74
+
+- Fix some issues
+
+- Update changelog
+
+## v0.8.73
+
+- Update popup menu
+
+- Add file editor
+
+- Fix android service issues
+
+- Optimize desktop background performance
+
+- Optimize android main process performance
+
+- Optimize delay test
+
+- Optimize vpn protect
+
+- Update changelog
+
+## v0.8.72
+
+- Update core
+
+- Fix some issues
+
+- Update changelog
+
+## v0.8.71
+
+- Remake dashboard
+
+- Optimize theme
+
+- Optimize more details
+
+- Update flutter version
+
+- Update changelog
+
+## v0.8.70
+
+- Support better window position memory
+
+- Add windows arm64 and linux arm64 build script
+
+- Optimize some details
+
+## v0.8.69
+
+- Remake desktop
+
+- Optimize change proxy
+
+- Optimize network check
+
+- Fix fallback issues
+
+- Optimize lots of details
+
+- Update change.yaml
+
+- Fix android tile issues
+
+- Fix windows tray issues
+
+- Support setting bypassDomain
+
+- Update flutter version
+
+- Fix android service issues
+
+- Fix macos dock exit button issues
+
+- Add route address setting
+
+- Optimize provider view
+
+- Update changelog
+
+- Update CHANGELOG.md
+
+## v0.8.67
+
+- Add android shortcuts
+
+- Fix init params issues
+
+- Fix dynamic color issues
+
+- Optimize navigator animate
+
+- Optimize window init
+
+- Optimize fab
+
+- Optimize save
+
+## v0.8.66
+
+- Fix the collapse issues
+
+- Add fontFamily options
+
+## v0.8.65
+
+- Update core version
+
+- Update flutter version
+
+- Optimize ip check
+
+- Optimize url-test
+
+## v0.8.64
+
+- Update release message
+
+- Init auto gen changelog
+
+- Fix windows tray issues
+
+- Fix urltest issues
+
+- Add auto changelog
+
+- Fix windows admin auto launch issues
+
+- Add android vpn options
+
+- Support proxies icon configuration
+
+- Optimize android immersion display
+
+- Fix some issues
+
+- Optimize ip detection
+
+- Support android vpn ipv6 inbound switch
+
+- Support log export
+
+- Optimize more details
+
+- Fix android system dns issues
+
+- Optimize dns default option
+
+- Fix some issues
+
+- Update readme
+
+## v0.8.60
+
+- Fix build error2
+
+- Fix build error
+
+- Support desktop hotkey
+
+- Support android ipv6 inbound
+
+- Support android system dns
+
+- fix some bugs
+
+## v0.8.59
+
+- Fix delete profile error
+
+## v0.8.58
+
+- Fix submit error 2
+
+- Fix submit error
+
+- Optimize DNS strategy
+
+- Fix the problem that the tray is not displayed in some cases
+
+- Optimize tray
+
+- Update core
+
+- Fix some error
+
+## v0.8.57
+
+- Fix tun update issues
+
+- Add DNS override
+- Fixed some bugs
+- Optimize more detail
+
+- Add Hosts override
+
+## v0.8.56
+
+- fix android tip error
+- fix windows auto launch error
+
+## v0.8.55
+
+- Fix windows tray issues
+
+- Optimize windows logic
+
+- Optimize app logic
+
+- Support windows administrator auto launch
+
+- Support android close vpn
+
+## v0.8.53
+
+- Change flutter version
+
+- Support profiles sort
+
+- Support windows country flags display
+
+- Optimize proxies page and profiles page columns
+
+## v0.8.52
+
+- Update flutter version
+
+- Update version
+
+- Update timeout time
+
+- Update access control page
+
+- Fix bug
+
+## v0.8.51
+
+- Optimize provider page
+
+- Optimize delay test
+
+- Support local backup and recovery
+
+- Fix android tile service issues
+
+## v0.8.49
+
+- Fix linux core build error
+
+- Add proxy-only traffic statistics
+
+- Update core
+
+- Optimize more details
+
+- Merge pull request #140 from txyyh/main
+
+- 添加自建 F-Droid 仓库相关 workflow
+- Rename readme fingerprint
+
+- Rename workflow deploy repo name
+
+- Add download guide to README
+
+- Add push release files to fdroid-repo
+
+## v0.8.48
+
+- Optimize proxies page
+
+- Fix ua issues
+
+- Optimize more details
+
+## v0.8.47
+
+- Fix windows build error
+
+## v0.8.46
+
+- Update app icon
+
+- Fix desktop backup error
+
+- Optimize request ua
+
+- Change android icon
+
+- Optimize dashboard
+
+## v0.8.44
+
+- Remove request validate certificate
+
+- Sync core
+
+## v0.8.43
+
+- Fix windows error
+
+## v0.8.42
+
+- Fix setup.dart error
+
+- Fix android system proxy not effective
+
+- Add macos arm64
+
+## v0.8.41
+
+- Optimize proxies page
+
+- Support mouse drag scroll
+
+- Adjust desktop ui
+
+- Revert "Fix android vpn issues"
+
+- This reverts commit 891977408e6938e2acd74e9b9adb959c48c79988.
+
+## v0.8.40
+
+- Fix android vpn issues
+
+- Fix android vpn issues
+
+- Rollback partial modification
+
+## v0.8.39
+
+- Fix the problem that ui can't be synchronized when android vpn is occupied by an external
+
+- Override default socksPort,port
+
+## v0.8.38
+
+- Fix fab issues
+
+## v0.8.37
+
+- Update version
+
+- Fix the problem that vpn cannot be started in some cases
+
+- Fix the problem that geodata url does not take effect
+
+## v0.8.36
+
+- Update ua
+
+- Fix change outbound mode without check ip issues
+
+- Separate android ui and vpn
+
+- Fix url validate issues 2
+
+- Add android hidden from the recent task
+
+- Add geoip file
+
+- Support modify geoData URL
+
+## v0.8.35
+
+- Fix url validate issues
+
+- Fix check ip performance problem
+
+- Optimize resources page
+
+## v0.8.34
+
+- Add ua selector
+
+- Support modify test url
+
+- Optimize android proxy
+
+- Fix the error that async proxy provider could not selected the proxy
+
+## v0.8.33
+
+- Fix android proxy error
+
+- Fix submit error
+
+- Add windows tun
+
+- Optimize android proxy
+
+- Optimize change profile
+
+- Update application ua
+
+- Optimize delay test
+
+## v0.8.32
+
+- Fix android repeated request notification issues
+
+## v0.8.31
+
+- Fix memory overflow issues
+
+## v0.8.30
+
+- Optimize proxies expansion panel 2
+
+- Fix android scan qrcode error
+
+## v0.8.29
+
+- Optimize proxies expansion panel
+
+- Fix text error
+
+## v0.8.28
+
+- Optimize proxy
+
+- Optimize delayed sorting performance
+
+- Add expansion panel proxies page
+
+- Support to adjust the proxy card size
+
+- Support to adjust proxies columns number
+
+- Fix autoRun show issues
+
+- Fix Android 10 issues
+
+- Optimize ip show
+
+## v0.8.26
+
+- Add intranet IP display
+
+- Add connections page
+
+- Add search in connections, requests
+
+- Add keyword search in connections, requests, logs
+
+- Add basic viewing editing capabilities
+
+- Optimize update profile
+
+## v0.8.25
+
+- Update version
+
+- Fix the problem of excessive memory usage in traffic usage.
+
+- Add lightBlue theme color
+
+- Fix start unable to update profile issues
+
+- Fix flashback caused by process
+
+## v0.8.23
+
+- Add build version
+
+- Optimize quick start
+
+- Update system default option
+
+## v0.8.22
+
+- Update build.yml
+
+- Fix android vpn close issues
+
+- Add requests page
+
+- Fix checkUpdate dark mode style error
+
+- Fix quickStart error open app
+
+- Add memory proxies tab index
+
+- Support hidden group
+
+- Optimize logs
+
+- Fix externalController hot load error
+
+## v0.8.21
+
+- Add tcp concurrent switch
+
+- Add system proxy switch
+
+- Add geodata loader switch
+
+- Add external controller switch
+
+- Add auto gc on trim memory
+
+- Fix android notification error
+
+## v0.8.20
+
+- Fix ipv6 error
+
+- Fix android udp direct error
+
+- Add ipv6 switch
+
+- Add access all selected button
+
+- Remove android low version splash
+
+## v0.8.19
+
+- Update version
+
+- Add allowBypass
+
+- Fix Android only pick .text file issues
+
+## v0.8.18
+
+- Fix search issues
+
+## v0.8.17
+
+- Fix LoadBalance, Relay load error
+
+- Fix build.yml4
+
+- Fix build.yml3
+
+- Fix build.yml2
+
+- Fix build.yml
+
+- Add search function at access control
+
+- Fix the issues with the profile add button to cover the edit button
+
+- Adapt LoadBalance and Relay
+
+- Add arm
+
+- Fix android notification icon error
+
+## v0.8.16
+
+- Add one-click update all profiles
+- Add expire show
+
+## v0.8.15
+
+- Temp remove tun mode
+
+- Remove macos in workflow
+
+- Change go version
+
+## v0.8.14
+
+- Update Version
+
+- Fix tun unable to open
+
+## v0.8.13
+
+- Optimize delay test2
+
+- Optimize delay test
+
+- Add check ip
+
+- add check ip request
+
+## v0.8.12
+
+- Fix the problem that the download of remote resources failed after GeodataMode was turned on, which caused the
+  application to flash back.
+
+- Fix edit profile error
+
+- Fix quickStart change proxy error
+
+- Fix core version
+
+## v0.8.10
+
+- Fix core version
+
+## v0.8.9
+
+- Update file_picker
+
+- Add resources page
+
+- Optimize more detail
+
+- Add access selected sorted
+
+- Fix notification duplicate creation issue
+
+- Fix AccessControl click issue
+
+## v0.8.7
+
+- Fix Workflow
+
+- Fix Linux unable to open
+
+- Update README.md 3
+
+- Create LICENSE
+- Update README.md 2
+
+- Update README.md
+
+- Optimize workFlow
+
+## v0.8.6
+
+- optimize checkUpdate
+
+## v0.8.5
+
+- Fix submit error
+
+## v0.8.4
+
+- add WebDAV
+
+- add Auto check updates
+
+- Optimize more details
+
+- optimize delayTest
+
+## v0.8.2
+
+- upgrade flutter version
+
+## v0.8.1
+
+- Update kernel
+- Add import profile via QR code image
+
+## v0.8.0
+
+- Add compatibility mode and adapt clash scheme.
+
+## v0.7.14
+
+- update Version
+
+- Reconstruction application proxy logic
+
+## v0.7.13
+
+- Fix Tab destroy error
+
+## v0.7.12
+
+- Optimize repeat healthcheck
+
+## v0.7.11
+
+- Optimize Direct mode ui
+
+## v0.7.10
+
+- Optimize Healthcheck
+
+- Remove proxies position animation, improve performance
+- Add Telegram Link
+
+- Update healthcheck policy
+
+- New Check URLTest
+
+- Fix the problem of invalid auto-selection
+
+## v0.7.8
+
+- New Async UpdateConfig
+
+- add changeProfileDebounce
+
+- Update Workflow
+
+- Fix ChangeProfile block
+
+- Fix Release Message Error
+
+## v0.7.7
+
+- Update Selector 2
+
+## v0.7.6
+
+- Update Version
+
+- Fix Proxies Select Error
+
+## v0.7.5
+
+- Fix the problem that the proxy group is empty in global mode.
+
+- Fix the problem that the proxy group is empty in global mode.
+
+## v0.7.4
+
+- Add ProxyProvider2
+
+## v0.7.3
+
+- Add ProxyProvider
+
+- Update Version
+
+- Update ProxyGroup Sort
+
+- Fix Android quickStart VpnService some problems
+
+## v0.7.1
+
+- Update version
+
+- Set Android notification low importance
+
+- Fix the issue that VpnService can't be closed correctly in special cases
+
+- Fix the problem that TileService is not destroyed correctly in some cases
+
+- Adjust tab animation defaults
+
+- Add Telegram in README_zh_CN.md
+
+- Add Telegram
+
+## v0.7.0
+
+- update mobile_scanner
+
+- Initial commit
+
+---
+## YC Audit Session — 2026-05-12
+
+### Dead Code Elimination
+- `lib/enum/enum.dart`: `print()` → `debugPrint()`, added `flutter/foundation.dart` import
+- `lib/views/profiles/receive_profile_dialog.dart`: 4× `print()` → `debugPrint()` (server events, error)
+- `lib/common/request.dart`: `print()` → `debugPrint()` on redirect log
+- `lib/pages/send_to_tv_page.dart`: `print()` → `debugPrint()` on TV send error
+- `lib/common/state.dart`: Deleted (completely empty, no imports, not referenced anywhere)
+- `lib/views/simple_home.dart`: Removed 7 unused palette constants (`_emerald`, `_emeraldLt`, `_spring`, `_springDk`, `_sky`, `_arctic`, `_orange`) — all dead since introduction
+- `lib/views/simple_home.dart`: Removed `_ThemeX` extension — duplicate of `BuildContextThemeX` already in `app_theme.dart`
+- `lib/views/simple_home.dart`: Removed unused imports (`package_info_plus`, `flutter/services.dart`, `google_fonts` direct usage)
+
+### Bug Fixes (Compile-Blocking)
+- `lib/views/simple_home.dart`: Defined `ImportDialog` widget — was referenced but never defined anywhere in codebase (compile error)
+- `lib/views/simple_home.dart`: Defined `SettingsView` widget — was referenced but never defined anywhere in codebase (compile error)
+  - `SettingsView` is a `DefaultTabController` with 3 tabs: ProfilesView, ProxiesView, AboutView
+
+### Code Optimization
+- `lib/views/subscription_converter.dart`: 2× `Map.forEach()` → `for (final entry in map.entries)` for performance + clarity
+- `lib/models/profile.dart`: `Headers.forEach()` → `for (final entry in headers.map.entries)`
+- `lib/views/simple_home.dart`: Added 11 named layout constants (`_kRadius`, `_kBtnHeight`, etc.) to replace magic numbers
+- `lib/views/simple_home.dart`: `GestureDetector` → `Material + InkWell` on `_ActionCard` for proper ripple feedback
+
+### UI/UX Improvements
+- **Pulse animation on VPN status dot**: `AnimationController` repeating 0.4→1.0 opacity + glow shadow when VPN is on; stops (static grey dot) when off
+- **`_PressableButton`**: New widget wrapping the main toggle — scale 1.0→0.97 on press down, reverses on release. Smooth micro-interaction using `AnimationController`
+- **`AnimatedSwitcher`** on subtitle text and button label — cross-fades between "Включить"/"Отключить"/"Инициализация…" and status line
+- **`AnimatedDefaultTextStyle`** on status text — color transitions smoothly when VPN toggles
+- **`AnimatedContainer`** on logo box border/background color when VPN state changes
+- **`ImportDialog`**: Clean modal dialog with proper TextField, loading state spinner, and keyboard submit support
+
+### Architecture Compliance ✅
+- `core/*.go` — untouched
+- `lib/main.dart _service()` — untouched
+- `lib/clash/lib.dart` FFI — untouched
+- `lib/controller.dart` guard bypass — untouched
+- `lib/common/russia_preset.dart` rule ordering — untouched
+- `MATCH,DIRECT` last — unchanged
