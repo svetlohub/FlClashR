@@ -1,3 +1,22 @@
+## [1.1.0] — 2026-05-12
+
+### Design System — full spec implementation
+- **Fonts**: Syne (display/headings) + DM Sans (body/UI) via google_fonts package
+- **Colors**: Full spec palette — violet, lime, orange, sky, surface, bg, t1/t2/t3
+- **Typography**: AppFonts helpers — logo (Syne 800), heading (Syne 800), cardHeadline (Syne 700), body (DM Sans 400), bodyMedium (DM Sans 500), btnPrimary (DM Sans 700), fieldLabel (DM Sans 700 uppercase), caption (DM Sans 400)
+- **Zero hardcoded colors**: all references via AppColors constants
+- **No BackdropFilter**: removed glassmorphism blur from Settings cards — was main freeze source
+
+### Performance
+- `_Card` widget: removed `BackdropFilter(sigma=12)` — eliminated jank in Settings screen
+- All animations: only `AnimatedContainer` (220ms easeOut) for button state, `AnimatedSwitcher` (180ms) for text
+- No `repeat()` animations in idle state — zero continuous repaints
+
+### Fixes
+- Play Protect: `network_security_config.xml` — user CAs moved to `<debug-overrides>` only
+- Telegram DNS: added AdGuard DoH (94.140.14.14) + Cloudflare DoT (tls://1.1.1.1) fallbacks
+- Proxy failover: connect timeout reduced 7s → 3s
+
 # Changelog
 
 ## [1.0.0] — 2026-05-10 🚀 Initial Release
@@ -21,6 +40,10 @@ Only the services that need it (Telegram, YouTube, WhatsApp) go through VPN. Eve
 - Minimum Android: 6.0 (API 23)
 - Architecture: arm64-v8a, x86_64
 - APK size: ~25MB
+
+---
+
+*Based on FlClashX • Routing rules from RoscomVPN community*
 
 ---
 
