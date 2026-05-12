@@ -52,8 +52,9 @@ class AppColors {
 
 // ─── Typography — Syne (display) + DM Sans (body) ─────────────────────────────
 class AppFonts {
-  static String get display => GoogleFonts.syne().fontFamily!;
-  static String get body    => GoogleFonts.dmSans().fontFamily!;
+  // Переименовано для устранения конфликта имен
+  static String get displayFamily => GoogleFonts.syne().fontFamily!;
+  static String get bodyFamily    => GoogleFonts.dmSans().fontFamily!;
 
   // Display / headings (Syne)
   static TextStyle logo(Color c)        => GoogleFonts.syne(fontSize: 19, fontWeight: FontWeight.w800, color: c);
@@ -180,7 +181,6 @@ class AppTheme {
           TargetPlatform.android: CupertinoPageTransitionsBuilder(),
         },
       ),
-      // AppBar
       appBarTheme: AppBarTheme(
         backgroundColor: bg,
         foregroundColor: cs.onSurface,
@@ -189,7 +189,6 @@ class AppTheme {
         titleTextStyle: GoogleFonts.syne(
           fontSize: 18, fontWeight: FontWeight.w800, color: cs.onSurface),
       ),
-      // Cards
       cardTheme: CardThemeData(
         color: cs.surface,
         elevation: 0,
@@ -198,7 +197,6 @@ class AppTheme {
           side: BorderSide(color: cs.outline),
         ),
       ),
-      // Input fields
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: bg,
@@ -219,7 +217,6 @@ class AppTheme {
         hintStyle: GoogleFonts.dmSans(color: cs.onSurfaceVariant),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
       ),
-      // Buttons
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: cs.primary,
@@ -239,13 +236,11 @@ class AppTheme {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         ),
       ),
-      // Dividers
       dividerTheme: DividerThemeData(
         color: cs.outlineVariant,
         thickness: 1,
         space: 1,
       ),
-      // ListTile
       listTileTheme: ListTileThemeData(
         titleTextStyle: GoogleFonts.dmSans(
             fontSize: 15, fontWeight: FontWeight.w500, color: cs.onSurface),
@@ -256,7 +251,6 @@ class AppTheme {
   }
 }
 
-// ─── Context extension ────────────────────────────────────────────────────────
 extension BuildContextThemeX on BuildContext {
   bool   get isDark   => Theme.of(this).brightness == Brightness.dark;
   Color  get bg       => isDark ? AppColors.darkBg        : AppColors.lightBg;
@@ -270,7 +264,6 @@ extension BuildContextThemeX on BuildContext {
   TextTheme get textTheme => Theme.of(this).textTheme;
 }
 
-// ─── GlassDecoration (kept for compatibility, no longer uses BackdropFilter) ──
 class GlassDecoration {
   static BoxDecoration card({required bool isDark, double radius = 14}) =>
       BoxDecoration(
@@ -280,6 +273,5 @@ class GlassDecoration {
           color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
         ),
       );
-  // glassBlur kept for any remaining references — zero sigma = no blur
   static final glassBlur = ImageFilter.blur(sigmaX: 0, sigmaY: 0);
 }
