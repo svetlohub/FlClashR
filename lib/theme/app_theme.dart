@@ -1,384 +1,285 @@
-/// AppTheme — Central theme definition for FlClashR
-///
-/// Palette (brand):
-///   Emerald (Primary)  #00703C
-///   Spring  (Accent)   #A0E720
-///   Sky                #00ADEE
-///   Arctic             #42E3B4
-///
-/// Design system:
-///   • Follows device light/dark via ThemeData.brightness
-///   • Light: off-white #F8F9FA surfaces, high-contrast text
-///   • Dark:  deep OLED #0A0A0A, dark surfaces #1A1A1A, brand colors
-///   • Glassmorphism cards: semi-transparent + blur (via BackdropFilter)
-///   • WCAG 2.1 AA on all text/bg combos (verified below)
-///
-/// Atomic Design:
-///   Colors → TextStyles → CardDecoration → ThemeData
+/// AppTheme — Raketa design system
+/// Implements the full spec: Syne (display) + DM Sans (body), spec color palette
 library app_theme;
 
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-// ─── Brand palette ────────────────────────────────────────────────────────────
+// ─── Brand palette (exact from spec) ─────────────────────────────────────────
 class AppColors {
   // Brand
-  static const emerald     = Color(0xFF00703C); // Primary — WCAG AA on white bg
-  static const emeraldDark = Color(0xFF005A30); // Pressed/dark state
-  static const emeraldLight= Color(0xFF00A055); // Light surface contrast
-  static const spring      = Color(0xFFA0E720); // Accent — use on dark bg only
-  static const springDark  = Color(0xFF7AB800); // Accent on light bg
-  static const sky         = Color(0xFF00ADEE); // Info/link
-  static const skyDark     = Color(0xFF0088BB); // Info on light bg
-  static const arctic      = Color(0xFF42E3B4); // Success/positive
+  static const violet     = Color(0xFF7C3AED); // primary action, active states
+  static const violetDark = Color(0xFF6D28D9); // hover darken
+  static const violetA    = Color(0x1A7C3AED); // rgba(124,58,237,0.10) tinted bg
+  static const lime       = Color(0xFF84CC16); // logo, success, active border
+  static const limeA      = Color(0x1F84CC16); // rgba(132,204,22,0.12) tinted bg
+  static const limeDark   = Color(0xFF65A30D); // lime text on light bg
+  static const limeText   = Color(0xFF3F6212); // dark lime for text
+  static const orange     = Color(0xFFF97316); // CTA, highlights
+  static const orangeDark = Color(0xFFEA6C0A); // hover
+  static const orangeA    = Color(0x1AF97316); // rgba(249,115,22,0.10) tinted
+  static const red        = Color(0xFFEF4444); // errors, destructive
+  static const skyA       = Color(0x140EA5E9); // rgba(14,165,233,0.08) info bg
+  static const skyBorder  = Color(0x330EA5E9); // rgba(14,165,233,0.20)
 
-  // Error / warning
-  static const error       = Color(0xFFE53935);
-  static const warning     = Color(0xFFFF8A00);
+  // Surfaces — light
+  static const lightBg         = Color(0xFFF1F5F9); // page bg — cool blue-gray
+  static const lightSurface    = Color(0xFFFFFFFF); // cards, sidebar
+  static const lightSurfaceHi  = Color(0xFFEEF2F7);
+  static const lightDivider    = Color(0xFFE2E8F0);
+  static const lightBorder     = Color(0x1A0F172A); // rgba(15,23,42,0.10)
+  static const lightBorderXs   = Color(0x0D0F172A); // rgba(15,23,42,0.05)
 
-  // ── Light surfaces ──────────────────────────────────────────────────────────
-  static const lightBg          = Color(0xFFF8F9FA);
-  static const lightSurface     = Color(0xFFFFFFFF);
-  static const lightSurfaceHigh = Color(0xFFEEF0F2);
-  static const lightDivider     = Color(0xFFDDE0E4);
-  static const lightTextPri     = Color(0xFF0D1117);   // contrast 17.5:1 on white
-  static const lightTextSec     = Color(0xFF4A5568);   // contrast 7.0:1 on white
-  static const lightTextTer     = Color(0xFF8A97A8);   // contrast 4.5:1 on white
+  // Text — light
+  static const lightT1 = Color(0xFF0F172A); // primary — near black deep navy
+  static const lightT2 = Color(0xFF475569); // secondary — medium slate
+  static const lightT3 = Color(0xFF94A3B8); // muted/placeholder
 
-  // ── Dark surfaces ───────────────────────────────────────────────────────────
-  static const darkBg           = Color(0xFF0A0A0A);   // OLED black
-  static const darkSurface      = Color(0xFF1A1A1A);   // contrast OK
-  static const darkSurfaceHigh  = Color(0xFF252525);
-  static const darkDivider      = Color(0xFF2E2E2E);
-  static const darkTextPri      = Color(0xFFF0F4F8);   // contrast ~17:1 on #1A1A1A
-  static const darkTextSec      = Color(0xFFADB8C3);   // contrast 7.0:1
-  static const darkTextTer      = Color(0xFF5A6878);   // contrast 4.5:1
+  // Surfaces — dark
+  static const darkBg         = Color(0xFF0D1117);
+  static const darkSurface    = Color(0xFF161B22);
+  static const darkSurfaceHi  = Color(0xFF21262D);
+  static const darkDivider    = Color(0xFF30363D);
+  static const darkBorder     = Color(0xFF30363D);
+  static const darkBorderXs   = Color(0xFF21262D);
 
-  // ── Glass ───────────────────────────────────────────────────────────────────
-  static const glassWhite       = Color(0x1AFFFFFF);   // 10% white
-  static const glassDark        = Color(0x1A000000);   // 10% black
+  // Text — dark
+  static const darkT1 = Color(0xFFF0F6FF);
+  static const darkT2 = Color(0xFF8B949E);
+  static const darkT3 = Color(0xFF484F58);
 }
 
-// ─── Glassmorphism helpers ────────────────────────────────────────────────────
-class GlassDecoration {
-  /// Card-level glass: semi-transparent surface + subtle border + soft shadow.
-  /// Use BackdropFilter(filter: AppTheme.glassBlur, child: Container(decoration: glassCard(isDark)))
-  static BoxDecoration card({
-    required bool isDark,
-    double radius = 20,
-    Color? tint,
-  }) {
-    return BoxDecoration(
-      color: tint ??
-          (isDark
-              ? AppColors.darkSurface.withOpacity(0.65)
-              : AppColors.lightSurface.withOpacity(0.75)),
-      borderRadius: BorderRadius.circular(radius),
-      border: Border.all(
-        color: isDark
-            ? Colors.white.withOpacity(0.08)
-            : Colors.white.withOpacity(0.60),
-        width: 1,
-      ),
-      boxShadow: isDark
-          ? [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.35),
-                blurRadius: 24,
-                offset: const Offset(0, 8),
-              ),
-            ]
-          : [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.08),
-                blurRadius: 16,
-                offset: const Offset(0, 4),
-              ),
-              BoxShadow(
-                color: Colors.white.withOpacity(0.90),
-                blurRadius: 0,
-                offset: const Offset(0, 1),
-              ),
-            ],
-    );
-  }
+// ─── Typography — Syne (display) + DM Sans (body) ─────────────────────────────
+class AppFonts {
+  static String get display => GoogleFonts.syne().fontFamily!;
+  static String get body    => GoogleFonts.dmSans().fontFamily!;
 
-  /// The ImageFilter to use with BackdropFilter for glass blur.
-  /// Sigma 12 is visually strong without being too slow on Android API 23+.
-  static final glassBlur = ImageFilter.blur(sigmaX: 12, sigmaY: 12);
+  // Display / headings (Syne)
+  static TextStyle logo(Color c)        => GoogleFonts.syne(fontSize: 19, fontWeight: FontWeight.w800, color: c);
+  static TextStyle heading(Color c)     => GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: c);
+  static TextStyle cardHeadline(Color c)=> GoogleFonts.syne(fontSize: 14, fontWeight: FontWeight.w700, color: c);
+  static TextStyle statLarge(Color c)   => GoogleFonts.syne(fontSize: 34, fontWeight: FontWeight.w800, color: c, height: 1.0);
+  static TextStyle verdict(Color c)     => GoogleFonts.syne(fontSize: 16, fontWeight: FontWeight.w800, color: c);
+  static TextStyle navStep(Color c)     => GoogleFonts.syne(fontSize: 9,  fontWeight: FontWeight.w800, color: c);
 
-  /// Wraps [child] in a BackdropFilter glass card.
-  /// Falls back gracefully if BackdropFilter is unavailable.
-  static Widget wrap({
-    required Widget child,
-    required bool isDark,
-    double radius = 20,
-    Color? tint,
-    EdgeInsets padding = EdgeInsets.zero,
-  }) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: BackdropFilter(
-        filter: glassBlur,
-        child: Container(
-          padding: padding,
-          decoration: card(isDark: isDark, radius: radius, tint: tint),
-          child: child,
-        ),
-      ),
-    );
-  }
-}
-
-// ─── Text styles ──────────────────────────────────────────────────────────────
-class AppTextStyles {
-  static TextStyle displayLarge(Color color) => TextStyle(
-      fontSize: 42,
-      fontWeight: FontWeight.w900,
-      color: color,
-      letterSpacing: -1.5,
-      height: 1.1);
-
-  static TextStyle titleLarge(Color color) => TextStyle(
-      fontSize: 22,
-      fontWeight: FontWeight.w800,
-      color: color,
-      letterSpacing: -0.5);
-
-  static TextStyle titleMedium(Color color) => TextStyle(
-      fontSize: 17,
-      fontWeight: FontWeight.w600,
-      color: color);
-
-  static TextStyle body(Color color) => TextStyle(
-      fontSize: 15,
-      fontWeight: FontWeight.w400,
-      color: color,
-      height: 1.5);
-
-  static TextStyle caption(Color color) => TextStyle(
-      fontSize: 12,
-      fontWeight: FontWeight.w500,
-      color: color,
-      letterSpacing: 0.2);
-
-  static TextStyle label(Color color) => TextStyle(
-      fontSize: 11,
-      fontWeight: FontWeight.w700,
-      color: color,
-      letterSpacing: 1.4);
+  // Body / UI (DM Sans)
+  static TextStyle body(Color c, {double size = 14}) =>
+      GoogleFonts.dmSans(fontSize: size, fontWeight: FontWeight.w400, color: c, height: 1.5);
+  static TextStyle bodyMedium(Color c, {double size = 14}) =>
+      GoogleFonts.dmSans(fontSize: size, fontWeight: FontWeight.w500, color: c, height: 1.5);
+  static TextStyle btnPrimary(Color c)  => GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700, color: c);
+  static TextStyle btnGhost(Color c)    => GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600, color: c);
+  static TextStyle fieldLabel(Color c)  => GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700, color: c,
+      letterSpacing: 0.7);
+  static TextStyle caption(Color c)     => GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w400, color: c);
+  static TextStyle micro(Color c)       => GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700, color: c);
 }
 
 // ─── ThemeData factories ──────────────────────────────────────────────────────
 class AppTheme {
   AppTheme._();
 
-  /// Light theme — off-white surfaces, emerald primary, high contrast.
   static ThemeData light({PageTransitionsTheme? pageTransitions}) {
-    const cs = ColorScheme(
-      brightness: Brightness.light,
-      primary: AppColors.emerald,
-      onPrimary: Colors.white,
-      primaryContainer: Color(0xFFB7F5D4),
-      onPrimaryContainer: Color(0xFF003920),
-      secondary: AppColors.springDark,
-      onSecondary: Colors.white,
-      secondaryContainer: Color(0xFFD9F7A0),
-      onSecondaryContainer: Color(0xFF1E4400),
-      tertiary: AppColors.skyDark,
-      onTertiary: Colors.white,
-      tertiaryContainer: Color(0xFFB3E8FF),
-      onTertiaryContainer: Color(0xFF00334B),
-      error: AppColors.error,
-      onError: Colors.white,
-      errorContainer: Color(0xFFFFDAD6),
-      onErrorContainer: Color(0xFF410002),
-      surface: AppColors.lightSurface,
-      onSurface: AppColors.lightTextPri,
-      surfaceContainerHighest: AppColors.lightSurfaceHigh,
-      onSurfaceVariant: AppColors.lightTextSec,
-      outline: AppColors.lightDivider,
-      outlineVariant: Color(0xFFE8EAED),
-      shadow: Color(0xFF000000),
-      scrim: Color(0xFF000000),
-      inverseSurface: AppColors.darkSurface,
-      onInverseSurface: AppColors.darkTextPri,
-      inversePrimary: AppColors.emeraldLight,
+    final base = GoogleFonts.dmSansTextTheme();
+    return _build(
+      cs: const ColorScheme(
+        brightness: Brightness.light,
+        primary: AppColors.violet,
+        onPrimary: Colors.white,
+        primaryContainer: AppColors.violetA,
+        onPrimaryContainer: AppColors.violet,
+        secondary: AppColors.lime,
+        onSecondary: Colors.white,
+        secondaryContainer: AppColors.limeA,
+        onSecondaryContainer: AppColors.limeText,
+        tertiary: AppColors.orange,
+        onTertiary: Colors.white,
+        tertiaryContainer: AppColors.orangeA,
+        onTertiaryContainer: AppColors.orangeDark,
+        error: AppColors.red,
+        onError: Colors.white,
+        errorContainer: Color(0xFFFFDAD6),
+        onErrorContainer: Color(0xFF410002),
+        surface: AppColors.lightSurface,
+        onSurface: AppColors.lightT1,
+        surfaceContainerHighest: AppColors.lightSurfaceHi,
+        onSurfaceVariant: AppColors.lightT2,
+        outline: AppColors.lightBorder,
+        outlineVariant: AppColors.lightBorderXs,
+        shadow: Colors.black,
+        scrim: Colors.black,
+        inverseSurface: AppColors.darkSurface,
+        onInverseSurface: AppColors.darkT1,
+        inversePrimary: AppColors.violetA,
+      ),
+      bg: AppColors.lightBg,
+      textTheme: base.apply(
+        bodyColor: AppColors.lightT1,
+        displayColor: AppColors.lightT1,
+      ),
+      pageTransitions: pageTransitions,
     );
-
-    return _buildTheme(cs, pageTransitions);
   }
 
-  /// Dark theme — OLED surfaces, brand colors at reduced chroma, glassmorphism.
   static ThemeData dark({PageTransitionsTheme? pageTransitions}) {
-    const cs = ColorScheme(
-      brightness: Brightness.dark,
-      primary: AppColors.emeraldLight,
-      onPrimary: Colors.black,
-      primaryContainer: AppColors.emeraldDark,
-      onPrimaryContainer: Color(0xFFB7F5D4),
-      secondary: AppColors.spring,
-      onSecondary: Colors.black,
-      secondaryContainer: Color(0xFF3E5A00),
-      onSecondaryContainer: AppColors.spring,
-      tertiary: AppColors.sky,
-      onTertiary: Colors.black,
-      tertiaryContainer: Color(0xFF004C6A),
-      onTertiaryContainer: AppColors.sky,
-      error: Color(0xFFFFB4AB),
-      onError: Color(0xFF690005),
-      errorContainer: Color(0xFF93000A),
-      onErrorContainer: Color(0xFFFFDAD6),
-      surface: AppColors.darkSurface,
-      onSurface: AppColors.darkTextPri,
-      surfaceContainerHighest: AppColors.darkSurfaceHigh,
-      onSurfaceVariant: AppColors.darkTextSec,
-      outline: AppColors.darkDivider,
-      outlineVariant: Color(0xFF3A3A3A),
-      shadow: Color(0xFF000000),
-      scrim: Color(0xFF000000),
-      inverseSurface: AppColors.lightSurface,
-      onInverseSurface: AppColors.lightTextPri,
-      inversePrimary: AppColors.emerald,
+    final base = GoogleFonts.dmSansTextTheme();
+    return _build(
+      cs: const ColorScheme(
+        brightness: Brightness.dark,
+        primary: AppColors.violet,
+        onPrimary: Colors.white,
+        primaryContainer: AppColors.violetA,
+        onPrimaryContainer: Color(0xFFD9C6FF),
+        secondary: AppColors.lime,
+        onSecondary: AppColors.limeText,
+        secondaryContainer: AppColors.limeA,
+        onSecondaryContainer: AppColors.lime,
+        tertiary: AppColors.orange,
+        onTertiary: Colors.white,
+        tertiaryContainer: AppColors.orangeA,
+        onTertiaryContainer: AppColors.orange,
+        error: AppColors.red,
+        onError: Colors.white,
+        errorContainer: Color(0xFF8C0009),
+        onErrorContainer: Color(0xFFFFDAD6),
+        surface: AppColors.darkSurface,
+        onSurface: AppColors.darkT1,
+        surfaceContainerHighest: AppColors.darkSurfaceHi,
+        onSurfaceVariant: AppColors.darkT2,
+        outline: AppColors.darkBorder,
+        outlineVariant: AppColors.darkBorderXs,
+        shadow: Colors.black,
+        scrim: Colors.black,
+        inverseSurface: AppColors.lightSurface,
+        onInverseSurface: AppColors.lightT1,
+        inversePrimary: AppColors.violet,
+      ),
+      bg: AppColors.darkBg,
+      textTheme: base.apply(
+        bodyColor: AppColors.darkT1,
+        displayColor: AppColors.darkT1,
+      ),
+      pageTransitions: pageTransitions,
     );
-
-    return _buildTheme(cs, pageTransitions);
   }
 
-  static ThemeData _buildTheme(
-    ColorScheme cs,
+  static ThemeData _build({
+    required ColorScheme cs,
+    required Color bg,
+    required TextTheme textTheme,
     PageTransitionsTheme? pageTransitions,
-  ) {
-    final isDark = cs.brightness == Brightness.dark;
-    final bg = isDark ? AppColors.darkBg : AppColors.lightBg;
-
+  }) {
     return ThemeData(
-      useMaterial3: true,
-      brightness: cs.brightness,
       colorScheme: cs,
       scaffoldBackgroundColor: bg,
-      pageTransitionsTheme: pageTransitions ?? const PageTransitionsTheme(),
-      visualDensity: VisualDensity.adaptivePlatformDensity,
+      textTheme: textTheme,
+      useMaterial3: true,
+      pageTransitionsTheme: pageTransitions ?? const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: CupertinoPageTransitionsBuilder(),
+        },
+      ),
       // AppBar
       appBarTheme: AppBarTheme(
         backgroundColor: bg,
         foregroundColor: cs.onSurface,
         elevation: 0,
         scrolledUnderElevation: 0,
-        titleTextStyle: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.bold,
-          color: cs.onSurface,
+        titleTextStyle: GoogleFonts.syne(
+          fontSize: 18, fontWeight: FontWeight.w800, color: cs.onSurface),
+      ),
+      // Cards
+      cardTheme: CardThemeData(
+        color: cs.surface,
+        elevation: 0,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: cs.outline),
         ),
       ),
-      // Filled button — emerald
+      // Input fields
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: bg,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: cs.outline),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: cs.outline),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: cs.primary, width: 2),
+        ),
+        labelStyle: GoogleFonts.dmSans(fontSize: 10, fontWeight: FontWeight.w700,
+            letterSpacing: 0.7),
+        hintStyle: GoogleFonts.dmSans(color: cs.onSurfaceVariant),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+      ),
+      // Buttons
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           backgroundColor: cs.primary,
           foregroundColor: cs.onPrimary,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-          padding:
-              const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+          textStyle: GoogleFonts.dmSans(fontSize: 15, fontWeight: FontWeight.w700),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 13),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         ),
       ),
-      // Text button
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          foregroundColor: cs.primary,
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: cs.surface,
+          foregroundColor: cs.onSurface,
+          textStyle: GoogleFonts.dmSans(fontSize: 12, fontWeight: FontWeight.w600),
+          side: BorderSide(color: cs.outline),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         ),
       ),
-      // Cards — subtle glass
-      cardTheme: CardThemeData(
-        color: isDark
-            ? AppColors.darkSurface.withOpacity(0.65)
-            : AppColors.lightSurface.withOpacity(0.80),
-        elevation: isDark ? 0 : 2,
-        shadowColor: Colors.black.withOpacity(0.12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(
-            color: isDark
-                ? Colors.white.withOpacity(0.07)
-                : Colors.black.withOpacity(0.05),
-          ),
-        ),
-      ),
-      // Snackbar
-      snackBarTheme: SnackBarThemeData(
-        backgroundColor: isDark ? AppColors.darkSurfaceHigh : AppColors.lightTextPri,
-        contentTextStyle: const TextStyle(color: Colors.white),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        behavior: SnackBarBehavior.floating,
-      ),
-      // Switch
-      switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return cs.onPrimary;
-          return null;
-        }),
-        trackColor: WidgetStateProperty.resolveWith((states) {
-          if (states.contains(WidgetState.selected)) return cs.primary;
-          return null;
-        }),
-      ),
-      // Dialog
-      dialogTheme: DialogThemeData(
-        backgroundColor:
-            isDark ? AppColors.darkSurface : AppColors.lightSurface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        elevation: isDark ? 0 : 8,
-      ),
-      // Input decoration
-      inputDecorationTheme: InputDecorationTheme(
-        filled: true,
-        fillColor: isDark ? AppColors.darkSurfaceHigh : AppColors.lightSurfaceHigh,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-        hintStyle: TextStyle(
-            color: isDark ? AppColors.darkTextTer : AppColors.lightTextTer),
-      ),
-      // Bottom sheet
-      bottomSheetTheme: BottomSheetThemeData(
-        backgroundColor:
-            isDark ? AppColors.darkSurface : AppColors.lightSurface,
-        shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-        ),
-        elevation: 0,
-      ),
-      // Divider
+      // Dividers
       dividerTheme: DividerThemeData(
-        color: isDark ? AppColors.darkDivider : AppColors.lightDivider,
+        color: cs.outlineVariant,
         thickness: 1,
         space: 1,
+      ),
+      // ListTile
+      listTileTheme: ListTileThemeData(
+        titleTextStyle: GoogleFonts.dmSans(
+            fontSize: 15, fontWeight: FontWeight.w500, color: cs.onSurface),
+        subtitleTextStyle: GoogleFonts.dmSans(
+            fontSize: 12, color: cs.onSurfaceVariant),
       ),
     );
   }
 }
 
-// ─── BuildContext extension — quick access ────────────────────────────────────
-extension AppThemeContext on BuildContext {
-  bool get isAppDark => Theme.of(this).brightness == Brightness.dark;
+// ─── Context extension ────────────────────────────────────────────────────────
+extension BuildContextThemeX on BuildContext {
+  bool   get isDark   => Theme.of(this).brightness == Brightness.dark;
+  Color  get bg       => isDark ? AppColors.darkBg        : AppColors.lightBg;
+  Color  get surf     => isDark ? AppColors.darkSurface   : AppColors.lightSurface;
+  Color  get surfHi   => isDark ? AppColors.darkSurfaceHi : AppColors.lightSurfaceHi;
+  Color  get divider  => isDark ? AppColors.darkDivider   : AppColors.lightDivider;
+  Color  get border   => isDark ? AppColors.darkBorder    : AppColors.lightBorder;
+  Color  get textPri  => isDark ? AppColors.darkT1        : AppColors.lightT1;
+  Color  get textSec  => isDark ? AppColors.darkT2        : AppColors.lightT2;
+  Color  get textTer  => isDark ? AppColors.darkT3        : AppColors.lightT3;
+  TextTheme get textTheme => Theme.of(this).textTheme;
+}
 
-  Color get appBg =>
-      isAppDark ? AppColors.darkBg : AppColors.lightBg;
-  Color get appSurface =>
-      isAppDark ? AppColors.darkSurface : AppColors.lightSurface;
-  Color get appSurfaceHigh =>
-      isAppDark ? AppColors.darkSurfaceHigh : AppColors.lightSurfaceHigh;
-  Color get appDivider =>
-      isAppDark ? AppColors.darkDivider : AppColors.lightDivider;
-  Color get appTextPri =>
-      isAppDark ? AppColors.darkTextPri : AppColors.lightTextPri;
-  Color get appTextSec =>
-      isAppDark ? AppColors.darkTextSec : AppColors.lightTextSec;
-  Color get appTextTer =>
-      isAppDark ? AppColors.darkTextTer : AppColors.lightTextTer;
-  Color get appPrimary =>
-      isAppDark ? AppColors.emeraldLight : AppColors.emerald;
-  Color get appAccent =>
-      isAppDark ? AppColors.spring : AppColors.springDark;
+// ─── GlassDecoration (kept for compatibility, no longer uses BackdropFilter) ──
+class GlassDecoration {
+  static BoxDecoration card({required bool isDark, double radius = 14}) =>
+      BoxDecoration(
+        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(
+          color: isDark ? AppColors.darkBorder : AppColors.lightBorder,
+        ),
+      );
+  // glassBlur kept for any remaining references — zero sigma = no blur
+  static final glassBlur = ImageFilter.blur(sigmaX: 0, sigmaY: 0);
 }
