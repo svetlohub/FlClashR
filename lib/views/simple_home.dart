@@ -17,6 +17,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flclashx/theme/app_theme.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 // ─── Palette — brand colors from AppTheme (mapped to local constants) ─────────
 // Primary: Emerald #00703C / #00A055 (dark)
@@ -25,32 +26,32 @@ import 'package:flclashx/theme/app_theme.dart';
 // Success: Arctic  #42E3B4
 // Warning/Error: orange #FF8A00
 
-const _emerald   = AppColors.emerald;
-const _emeraldLt = AppColors.emeraldLight;
-const _spring    = AppColors.spring;
-const _springDk  = AppColors.springDark;
-const _sky       = AppColors.sky;
-const _arctic    = AppColors.arctic;
-const _orange    = AppColors.warning;
+const _emerald   = AppColors.violet;
+const _emeraldLt = AppColors.violetLight;
+const _spring    = AppColors.lime;
+const _springDk  = AppColors.limeDark;
+const _sky       = AppColors.violet;
+const _arctic    = AppColors.lime;
+const _orange    = AppColors.orange;
 
 // Kept for backward compat with palette code below — mapped to brand
 const _violet    = _emerald;        // primary interactive
 const _violetLt  = _emeraldLt;     // primary on dark
 const _lime      = _spring;        // success/active
 const _limeDk    = _springDk;      // success on light
-const _slate     = Color(0xFF78909C);
+const _slate     = AppColors.lightT2;
 
 // Dark theme surfaces — use AppColors
 // (kept as aliases for legacy code — resolved via _ThemeX extension)
 const _bgDark    = AppColors.darkBg;
 const _surfDark  = AppColors.darkSurface;
-const _surfHiDk  = AppColors.darkSurfaceHigh;
+const _surfHiDk  = AppColors.darkSurfaceHi;
 const _divDark   = AppColors.darkDivider;
 
 // Light theme surfaces
 const _bgLight   = AppColors.lightBg;
 const _surfLight = AppColors.lightSurface;
-const _surfHiLt  = AppColors.lightSurfaceHigh;
+const _surfHiLt  = AppColors.lightSurfaceHi;
 const _divLight  = AppColors.lightDivider;
 
 // Text — always referenced via theme, not hardcoded
@@ -58,15 +59,18 @@ const _divLight  = AppColors.lightDivider;
 // ─────────────────────────────────────────────────────────────────────────────
 // Theme helper — delegates to AppColors for consistency
 // ─────────────────────────────────────────────────────────────────────────────
+// BuildContextThemeX is defined in app_theme.dart — provides ctx.bg, ctx.surf,
+// ctx.textPri, ctx.textSec, ctx.textTer, ctx.isDark, ctx.border, etc.
+// _ThemeX alias kept for backward compatibility in this file.
 extension _ThemeX on BuildContext {
-  bool get isDark => Theme.of(this).brightness == Brightness.dark;
-  Color get bg       => isDark ? AppColors.darkBg           : AppColors.lightBg;
-  Color get surf     => isDark ? AppColors.darkSurface      : AppColors.lightSurface;
-  Color get surfHi   => isDark ? AppColors.darkSurfaceHigh  : AppColors.lightSurfaceHigh;
-  Color get divider  => isDark ? AppColors.darkDivider      : AppColors.lightDivider;
-  Color get textPri  => isDark ? AppColors.darkTextPri      : AppColors.lightTextPri;
-  Color get textSec  => isDark ? AppColors.darkTextSec      : AppColors.lightTextSec;
-  Color get textTer  => isDark ? AppColors.darkTextTer      : AppColors.lightTextTer;
+  bool get isDark   => Theme.of(this).brightness == Brightness.dark;
+  // All color getters delegated to AppColors via BuildContextThemeX (app_theme.dart)
+  Color get _bg      => isDark ? AppColors.darkBg       : AppColors.lightBg;
+  Color get _surf    => isDark ? AppColors.darkSurface  : AppColors.lightSurface;
+  Color get _t1      => isDark ? AppColors.darkT1       : AppColors.lightT1;
+  Color get _t2      => isDark ? AppColors.darkT2       : AppColors.lightT2;
+  Color get _t3      => isDark ? AppColors.darkT3       : AppColors.lightT3;
+  Color get _border  => isDark ? AppColors.darkBorder   : AppColors.lightBorder;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -284,7 +288,7 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(msg, style: const TextStyle(color: Colors.black87,
           fontWeight: FontWeight.w500)),
-      backgroundColor: error ? const Color(0xFFFF8A00) : const Color(0xFFA0E720),
+      backgroundColor: error ? AppColors.orange : AppColors.lime,
       duration: dur,
       behavior: SnackBarBehavior.floating,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -299,21 +303,18 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
     final isDark  = Theme.of(context).brightness == Brightness.dark;
 
     // Static colors — no animation math
-    final bg       = isDark ? const Color(0xFF0D1117) : const Color(0xFFF1F5F9);
-    final surface  = isDark ? const Color(0xFF161B22) : const Color(0xFFFFFFFF);
-    final border   = isDark ? const Color(0xFF30363D) : const Color(0xFFE2E8F0);
-    final textPri  = isDark ? const Color(0xFFF0F6FF) : const Color(0xFF0F172A);
-    final textSec  = isDark ? const Color(0xFF8B949E) : const Color(0xFF475569);
-    final textTer  = isDark ? const Color(0xFF484F58) : const Color(0xFF94A3B8);
+    final bg       = isDark ? AppColors.darkBg : AppColors.lightBg;
+    final surface  = isDark ? AppColors.darkSurface : AppColors.lightSurface;
+    final border   = isDark ? AppColors.darkBorder : AppColors.lightBorder;
+    final textPri  = isDark ? AppColors.darkT1 : AppColors.lightT1;
+    final textSec  = isDark ? AppColors.darkT2 : AppColors.lightT2;
+    final textTer  = isDark ? AppColors.darkT3 : AppColors.lightT3;
 
     // Button state
-    const emerald = Color(0xFF00703C);
-    const emeraldDk = Color(0xFF005A30);
-    const spring = Color(0xFFA0E720);
-    final btnColor = isOn ? emeraldDk : emerald;
+    final btnColor = isOn ? AppColors.violetDark : AppColors.violet;
     final btnShadow = isOn
-        ? [BoxShadow(color: spring.withOpacity(0.35), blurRadius: 16, spreadRadius: -2, offset: const Offset(0, 4))]
-        : [BoxShadow(color: emerald.withOpacity(0.30), blurRadius: 16, spreadRadius: -2, offset: const Offset(0, 4))];
+        ? [BoxShadow(color: AppColors.lime.withOpacity(0.35), blurRadius: 16, spreadRadius: -2, offset: const Offset(0, 4))]
+        : [BoxShadow(color: AppColors.violet.withOpacity(0.30), blurRadius: 16, spreadRadius: -2, offset: const Offset(0, 4))];
 
     return Scaffold(
       backgroundColor: bg,
@@ -337,10 +338,10 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
                 Container(
                   width: 72, height: 72,
                   decoration: BoxDecoration(
-                    color: isOn ? spring.withOpacity(0.15) : emerald.withOpacity(0.10),
+                    color: isOn ? AppColors.lime.withOpacity(0.15) : AppColors.violet.withOpacity(0.10),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
-                      color: isOn ? spring.withOpacity(0.40) : emerald.withOpacity(0.25),
+                      color: isOn ? AppColors.lime.withOpacity(0.40) : AppColors.violet.withOpacity(0.25),
                     ),
                   ),
                   child: Center(
@@ -354,13 +355,11 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
                 ),
                 const SizedBox(height: 14),
                 Text('Raketa',
-                    style: TextStyle(
-                        fontSize: 26, fontWeight: FontWeight.w900,
-                        color: textPri, letterSpacing: -0.5)),
+                    style: AppFonts.logo(textPri).copyWith(fontSize: 26)),
                 const SizedBox(height: 4),
                 Text(
                   isOn ? 'Интернет сейчас свободнее' : 'Запустите VPN',
-                  style: TextStyle(fontSize: 13, color: textSec),
+                  style: AppFonts.body(textSec, size: 13),
                 ),
               ]),
             ),
@@ -373,12 +372,12 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: isOn
-                    ? spring.withOpacity(0.08)
+                    ? AppColors.lime.withOpacity(0.08)
                     : surface,
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(
                   color: isOn
-                      ? spring.withOpacity(0.30)
+                      ? AppColors.lime.withOpacity(0.30)
                       : border,
                 ),
               ),
@@ -386,7 +385,7 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
                 Container(
                   width: 10, height: 10,
                   decoration: BoxDecoration(
-                    color: isOn ? const Color(0xFF3F6212) : textTer,
+                    color: isOn ? AppColors.limeText : textTer,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -395,7 +394,7 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
                   isOn ? 'VPN активен' : 'VPN отключён',
                   style: TextStyle(
                     fontSize: 14, fontWeight: FontWeight.w600,
-                    color: isOn ? const Color(0xFF3F6212) : textSec,
+                    color: isOn ? AppColors.limeText : textSec,
                   ),
                 ),
                 const Spacer(),
@@ -433,10 +432,7 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
                     child: Text(
                       key: ValueKey('$isOn$isReady'),
                       isReady ? (isOn ? 'Отключить' : 'Включить') : 'Инициализация…',
-                      style: const TextStyle(
-                        fontSize: 17, fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
+                      style: AppFonts.btnPrimary(Colors.white),
                     ),
                   ),
                 ),
@@ -477,7 +473,7 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
 
             const SizedBox(height: 32),
             Text('Raketa · from pavel with love ♥',
-                style: TextStyle(fontSize: 11, color: textTer)),
+                style: AppFonts.caption(textTer)),
           ]),
         ),
       ),
@@ -498,7 +494,7 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView> {
       ctrl = ScaffoldMessenger.maybeOf(ctx)?.showSnackBar(const SnackBar(
         content: Text('Загружаем подписку…',
             style: TextStyle(color: Colors.black87)),
-        backgroundColor: Color(0xFFA0E720),
+        backgroundColor: AppColors.lime,
         duration: Duration(seconds: 90),
         behavior: SnackBarBehavior.floating,
       ));
@@ -562,8 +558,7 @@ class _ActionCard extends StatelessWidget {
           child: Row(mainAxisAlignment: MainAxisAlignment.center, children: [
             Icon(icon, size: 18, color: color),
             const SizedBox(width: 8),
-            Text(label, style: TextStyle(
-                fontSize: 14, fontWeight: FontWeight.w600, color: textPri)),
+            Text(label, style: AppFonts.bodyMedium(textPri)),
           ]),
         ),
       ),
@@ -1011,9 +1006,8 @@ class _SectionHdr extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(left: 4, bottom: 8, top: 4),
-    child: Text(text.toUpperCase(), style: TextStyle(
-        fontSize: 11, fontWeight: FontWeight.w700,
-        color: ctx.textTer, letterSpacing: 1.4)),
+    child: Text(text.toUpperCase(),
+        style: AppFonts.fieldLabel(ctx.textTer)),
   );
 }
 
@@ -1022,16 +1016,21 @@ class _Card extends StatelessWidget {
   final BuildContext context;
   const _Card({required this.child, required this.context});
   @override
-  Widget build(BuildContext ctx) => ClipRRect(
-    borderRadius: BorderRadius.circular(20),
-    child: BackdropFilter(
-      filter: GlassDecoration.glassBlur,
-      child: Container(
-        decoration: GlassDecoration.card(isDark: context.isDark, radius: 20),
-        child: child,
+  Widget build(BuildContext ctx) {
+    final isDark = context.isDark;
+    return Container(
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.darkSurface : AppColors.lightSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark
+              ? AppColors.darkBorder
+              : AppColors.lightDivider,
+        ),
       ),
-    ),
-  );
+      child: child,
+    );
+  }
 }
 
 class _Div extends StatelessWidget {
@@ -1324,63 +1323,37 @@ class _ServiceTile extends StatelessWidget {
     return SwitchListTile(
       value: value,
       onChanged: onChanged,
-      activeColor: _violet,
+      activeColor: AppColors.violet,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       title: Row(children: [
         Text(service.emoji, style: const TextStyle(fontSize: 20)),
         const SizedBox(width: 10),
         Text(service.name,
-            style: TextStyle(
-                color: context.textPri,
-                fontSize: 15,
-                fontWeight: FontWeight.w500)),
+            style: AppFonts.bodyMedium(context.textPri)),
       ]),
       subtitle: Padding(
         padding: const EdgeInsets.only(left: 30),
         child: Text(
           value ? 'Через VPN' : 'Напрямую',
-          style: TextStyle(
-              color: value ? _violet : context.textTer,
-              fontSize: 12,
-              fontWeight: FontWeight.w500),
+          style: AppFonts.caption(
+              value ? AppColors.violet : context.textTer),
         ),
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Rocket icon — brand asset for Raketa app
-// Drawn with CustomPaint; no external assets required.
-// Active state: emerald+spring gradient rocket with glow.
-// Inactive state: slate-gray rocket outline.
-// ─────────────────────────────────────────────────────────────────────────────
-class _RocketIcon extends StatelessWidget {
-  final bool active;
-  final double size;
-  const _RocketIcon({super.key, required this.active, this.size = 80});
 
-  @override
-  Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: CustomPaint(
-        painter: _RocketPainter(active: active),
-      ),
-    );
-  }
-}
 
 class _RocketPainter extends CustomPainter {
   final bool active;
   const _RocketPainter({required this.active});
 
   // Brand palette
-  static const _emerald = Color(0xFF00703C);
+  static const _emerald = AppColors.violet;
   static const _spring  = Color(0xFFA0E720);
-  static const _sky     = Color(0xFF00ADEE);
-  static const _slate   = Color(0xFF8A9BB0);
+  static const _sky     = AppColors.violetBorder;
+  static const _slate   = AppColors.lightT3;
 
   @override
   void paint(Canvas canvas, Size size) {
