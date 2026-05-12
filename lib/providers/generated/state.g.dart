@@ -23,7 +23,7 @@ final configStateProvider = AutoDisposeProvider<Config>.internal(
 // ignore: unused_element
 typedef ConfigStateRef = AutoDisposeProviderRef<Config>;
 String _$currentGroupsStateHash() =>
-    r'6222c006e1970e7435268d32903b9019cf1a4351';
+    r'2a5f0d5dc4e0e56bd6dc2c6ffd9d7904bdc6fc44';
 
 /// See also [currentGroupsState].
 @ProviderFor(currentGroupsState)

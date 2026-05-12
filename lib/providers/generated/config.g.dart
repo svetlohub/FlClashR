@@ -98,7 +98,7 @@ final profilesProvider =
 );
 
 typedef _$Profiles = AutoDisposeNotifier<List<Profile>>;
-String _$currentProfileIdHash() => r'6a11a2c9c98b102e8cc59bf73828dc20b0356901';
+String _$currentProfileIdHash() => r'ca7c9bdcaa1a7166049f51c3661470c42288814a';
 
 /// See also [CurrentProfileId].
 @ProviderFor(CurrentProfileId)
