@@ -5,7 +5,10 @@ import 'package:flclashx/enum/enum.dart';
 import 'package:flutter/material.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
-import 'models.dart';
+// Direct imports — avoids circular cycle via barrel models.dart
+import 'clash_config.dart';
+import 'common.dart';
+import 'profile.dart';
 
 part 'generated/config.freezed.dart';
 part 'generated/config.g.dart';
