@@ -7,7 +7,6 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'clash_config.dart';
 import 'common.dart';
 import 'config.dart';
-import 'profile.dart';
 
 part 'generated/core.freezed.dart';
 part 'generated/core.g.dart';
