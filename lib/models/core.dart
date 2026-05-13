@@ -1,8 +1,13 @@
 // ignore_for_file: invalid_annotation_target
 
 import 'package:flclashx/enum/enum.dart';
-import 'package:flclashx/models/models.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
+
+// Direct imports — avoids circular cycle via barrel models.dart
+import 'clash_config.dart';
+import 'common.dart';
+import 'config.dart';
+import 'profile.dart';
 
 part 'generated/core.freezed.dart';
 part 'generated/core.g.dart';
