@@ -404,6 +404,11 @@ class OverrideRule with _$OverrideRule {
 }
 
 extension OverrideRuleExt on OverrideRule {
+  /// The currently active rule list for this override (used by UI).
+  List<Rule> get rules => switch (type) {
+        OverrideRuleType.added => addedRules,
+        OverrideRuleType.override => overrideRules,
+      };
   List<Rule> getRules(List<Rule> originRules) {
     return switch (type) {
       OverrideRuleType.added => [...addedRules, ...originRules],
