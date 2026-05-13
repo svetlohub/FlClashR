@@ -51,7 +51,7 @@ class SetupParams with _$SetupParams {
 @freezed
 class UpdateParams with _$UpdateParams {
   const factory UpdateParams({
-    required Tun tun,
+    @JsonKey(fromJson: Tun.safeFormJson) required Tun tun,
     @JsonKey(name: 'mixed-port') required int mixedPort,
     @JsonKey(name: 'allow-lan') required bool allowLan,
     @JsonKey(name: 'find-process-mode')
