@@ -63,6 +63,9 @@ class ClashCore {
   }
 
   Future<bool> init() async {
+    // Wire the validator hook so Profile.saveFile/saveFileWithString can call
+    // validateConfig without importing clash/core.dart (breaks codegen cycle).
+    setProfileValidator(validateConfig);
     await initGeo();
     if (globalState.config.appSetting.openLogs) {
       clashCore.startLog();
