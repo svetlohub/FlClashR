@@ -17,6 +17,14 @@ part 'generated/profile.g.dart';
 
 typedef SelectedMap = Map<String, String>;
 
+// ─── JSON helpers for types not natively supported by json_serializable ───────
+
+Duration _durationFromJson(int minutes) => Duration(minutes: minutes);
+int _durationToJson(Duration d) => d.inMinutes;
+
+Set<String> _setFromJson(List<dynamic> list) => list.cast<String>().toSet();
+List<String> _setToJson(Set<String> set) => set.toList();
+
 /// Validator hook — wired by ClashCore at startup to avoid circular imports.
 /// Signature matches ClashCore.validateConfig(String) -> FutureOr<String>.
 typedef ProfileValidator = FutureOr<String> Function(String yaml);
@@ -35,10 +43,12 @@ class Profile with _$Profile {
     String? currentGroupName,
     @Default("") String url,
     DateTime? lastUpdateDate,
+    @JsonKey(fromJson: _durationFromJson, toJson: _durationToJson)
     required Duration autoUpdateDuration,
     SubscriptionInfo? subscriptionInfo,
     @Default(true) bool autoUpdate,
     @Default({}) SelectedMap selectedMap,
+    @JsonKey(fromJson: _setFromJson, toJson: _setToJson)
     @Default({}) Set<String> unfoldSet,
     @Default(OverrideData()) OverrideData overrideData,
     @JsonKey(includeToJson: false, includeFromJson: false)
@@ -61,51 +71,6 @@ class Profile with _$Profile {
     );
 }
 
-@freezed
-class OverrideData with _$OverrideData {
-  const factory OverrideData({
-    @Default(false) bool enable,
-    @Default(OverrideRule()) OverrideRule rule,
-  }) = _OverrideData;
-
-  factory OverrideData.fromJson(Map<String, Object?> json) =>
-      _$OverrideDataFromJson(json);
-}
-
-extension OverrideDataExt on OverrideData {
-  List<String> get runningRule {
-    if (!enable) {
-      return [];
-    }
-    return rule.rules.map((item) => item.value).toList();
-  }
-}
-
-@freezed
-class OverrideRule with _$OverrideRule {
-  const factory OverrideRule({
-    @Default(OverrideRuleType.added) OverrideRuleType type,
-    @Default([]) List<Rule> overrideRules,
-    @Default([]) List<Rule> addedRules,
-  }) = _OverrideRule;
-
-  factory OverrideRule.fromJson(Map<String, Object?> json) =>
-      _$OverrideRuleFromJson(json);
-}
-
-extension OverrideRuleExt on OverrideRule {
-  List<Rule> get rules => switch (type == OverrideRuleType.override) {
-        true => overrideRules,
-        false => addedRules,
-      };
-
-  OverrideRule updateRules(List<Rule> Function(List<Rule> rules) builder) {
-    if (type == OverrideRuleType.added) {
-      return copyWith(addedRules: builder(addedRules));
-    }
-    return copyWith(overrideRules: builder(overrideRules));
-  }
-}
 
 extension ProfilesExt on List<Profile> {
   Profile? getProfile(String? profileId) {
