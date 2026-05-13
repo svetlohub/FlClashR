@@ -187,7 +187,7 @@ const russiaServices = [
 // ─── DNS ──────────────────────────────────────────────────────────────────────
 // respectRules: false — DNS-запросы не идут через правила маршрутизации,
 // иначе DNS петля при fake-ip режиме
-const _presetDns = Dns(
+final _presetDns = Dns(
   enable: true,
   preferH3: false,
   useHosts: false,
@@ -216,7 +216,7 @@ const _presetDns = Dns(
 
 // ─── TUN ──────────────────────────────────────────────────────────────────────
 // gvisor stack лучше System для stealth (меньше сигнатур)
-const _presetTun = Tun(
+final _presetTun = Tun(
   enable: true,
   stack: TunStack.gvisor,
   dnsHijack: ['any:53'],
