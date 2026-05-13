@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flclashx/clash/core.dart';
 import 'package:flclashx/common/common.dart';
 import 'package:flclashx/enum/enum.dart';
 import 'package:flclashx/utils/device_info_service.dart';
@@ -15,6 +14,15 @@ part 'generated/profile.freezed.dart';
 part 'generated/profile.g.dart';
 
 typedef SelectedMap = Map<String, String>;
+
+/// Validator hook — wired by ClashCore at startup to avoid circular imports.
+/// Signature matches ClashCore.validateConfig(String) -> Future<String>.
+typedef ProfileValidator = Future<String> Function(String yaml);
+
+/// Set once by ClashCore.init(); default is a no-op that accepts everything.
+ProfileValidator _profileValidator = (_) async => '';
+
+void setProfileValidator(ProfileValidator fn) => _profileValidator = fn;
 
 @freezed
 class SubscriptionInfo with _$SubscriptionInfo {
@@ -209,11 +217,13 @@ extension ProfileExtension on Profile {
       }
     }
     
-    response.headers.forEach((name, values) {
+    for (final entry in response.headers.map.entries) {
+      final name = entry.key;
+      final values = entry.value;
       if (name.toLowerCase().startsWith('flclashx-') && values.isNotEmpty) {
         providerHeaders[name.toLowerCase()] = values.first;
       }
-    });
+    }
     
     Duration? durationFromHeader;
     final updateIntervalHeader = providerHeaders['profile-update-interval'];
@@ -233,7 +243,7 @@ extension ProfileExtension on Profile {
   }
 
   Future<Profile> saveFile(Uint8List bytes) async {
-    final message = await clashCore.validateConfig(utf8.decode(bytes));
+    final message = await _profileValidator(utf8.decode(bytes));
     if (message.isNotEmpty) {
       throw message;
     }
@@ -243,7 +253,7 @@ extension ProfileExtension on Profile {
   }
 
   Future<Profile> saveFileWithString(String value) async {
-    final message = await clashCore.validateConfig(value);
+    final message = await _profileValidator(value);
     if (message.isNotEmpty) {
       throw message;
     }
