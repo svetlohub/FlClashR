@@ -1,4 +1,5 @@
 // ignore_for_file: invalid_annotation_target
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
@@ -9,6 +10,7 @@ import 'package:flclashx/utils/device_info_service.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
 
 import 'clash_config.dart';
+import 'common.dart';
 
 part 'generated/profile.freezed.dart';
 part 'generated/profile.g.dart';
@@ -16,42 +18,14 @@ part 'generated/profile.g.dart';
 typedef SelectedMap = Map<String, String>;
 
 /// Validator hook — wired by ClashCore at startup to avoid circular imports.
-/// Signature matches ClashCore.validateConfig(String) -> Future<String>.
-typedef ProfileValidator = Future<String> Function(String yaml);
+/// Signature matches ClashCore.validateConfig(String) -> FutureOr<String>.
+typedef ProfileValidator = FutureOr<String> Function(String yaml);
 
 /// Set once by ClashCore.init(); default is a no-op that accepts everything.
 ProfileValidator _profileValidator = (_) async => '';
 
 void setProfileValidator(ProfileValidator fn) => _profileValidator = fn;
 
-@freezed
-class SubscriptionInfo with _$SubscriptionInfo {
-  const factory SubscriptionInfo({
-    @Default(0) int upload,
-    @Default(0) int download,
-    @Default(0) int total,
-    @Default(0) int expire,
-  }) = _SubscriptionInfo;
-
-  factory SubscriptionInfo.fromJson(Map<String, Object?> json) =>
-      _$SubscriptionInfoFromJson(json);
-
-  factory SubscriptionInfo.formHString(String? info) {
-    if (info == null) return const SubscriptionInfo();
-    final list = info.split(";");
-    final map = <String, int?>{};
-    for (final i in list) {
-      final keyValue = i.trim().split("=");
-      map[keyValue[0]] = int.tryParse(keyValue[1]);
-    }
-    return SubscriptionInfo(
-      upload: map["upload"] ?? 0,
-      download: map["download"] ?? 0,
-      total: map["total"] ?? 0,
-      expire: map["expire"] ?? 0,
-    );
-  }
-}
 
 @freezed
 class Profile with _$Profile {
