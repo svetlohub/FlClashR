@@ -244,6 +244,7 @@ UpdateParams _$UpdateParamsFromJson(Map<String, dynamic> json) {
 
 /// @nodoc
 mixin _$UpdateParams {
+  @JsonKey(fromJson: Tun.safeFormJson)
   Tun get tun => throw _privateConstructorUsedError;
   @JsonKey(name: 'mixed-port')
   int get mixedPort => throw _privateConstructorUsedError;
@@ -280,7 +281,7 @@ abstract class $UpdateParamsCopyWith<$Res> {
       _$UpdateParamsCopyWithImpl<$Res, UpdateParams>;
   @useResult
   $Res call(
-      {Tun tun,
+      {@JsonKey(fromJson: Tun.safeFormJson) Tun tun,
       @JsonKey(name: 'mixed-port') int mixedPort,
       @JsonKey(name: 'allow-lan') bool allowLan,
       @JsonKey(name: 'find-process-mode') FindProcessMode findProcessMode,
@@ -291,6 +292,8 @@ abstract class $UpdateParamsCopyWith<$Res> {
       @JsonKey(name: 'external-controller')
       ExternalControllerStatus externalController,
       @JsonKey(name: 'unified-delay') bool unifiedDelay});
+
+  $TunCopyWith<$Res> get tun;
 }
 
 /// @nodoc
@@ -308,7 +311,7 @@ class _$UpdateParamsCopyWithImpl<$Res, $Val extends UpdateParams>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? tun = freezed,
+    Object? tun = null,
     Object? mixedPort = null,
     Object? allowLan = null,
     Object? findProcessMode = null,
@@ -320,7 +323,7 @@ class _$UpdateParamsCopyWithImpl<$Res, $Val extends UpdateParams>
     Object? unifiedDelay = null,
   }) {
     return _then(_value.copyWith(
-      tun: freezed == tun
+      tun: null == tun
           ? _value.tun
           : tun // ignore: cast_nullable_to_non_nullable
               as Tun,
@@ -362,6 +365,16 @@ class _$UpdateParamsCopyWithImpl<$Res, $Val extends UpdateParams>
               as bool,
     ) as $Val);
   }
+
+  /// Create a copy of UpdateParams
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
+  $TunCopyWith<$Res> get tun {
+    return $TunCopyWith<$Res>(_value.tun, (value) {
+      return _then(_value.copyWith(tun: value) as $Val);
+    });
+  }
 }
 
 /// @nodoc
@@ -373,7 +386,7 @@ abstract class _$$UpdateParamsImplCopyWith<$Res>
   @override
   @useResult
   $Res call(
-      {Tun tun,
+      {@JsonKey(fromJson: Tun.safeFormJson) Tun tun,
       @JsonKey(name: 'mixed-port') int mixedPort,
       @JsonKey(name: 'allow-lan') bool allowLan,
       @JsonKey(name: 'find-process-mode') FindProcessMode findProcessMode,
@@ -384,6 +397,9 @@ abstract class _$$UpdateParamsImplCopyWith<$Res>
       @JsonKey(name: 'external-controller')
       ExternalControllerStatus externalController,
       @JsonKey(name: 'unified-delay') bool unifiedDelay});
+
+  @override
+  $TunCopyWith<$Res> get tun;
 }
 
 /// @nodoc
@@ -399,7 +415,7 @@ class __$$UpdateParamsImplCopyWithImpl<$Res>
   @pragma('vm:prefer-inline')
   @override
   $Res call({
-    Object? tun = freezed,
+    Object? tun = null,
     Object? mixedPort = null,
     Object? allowLan = null,
     Object? findProcessMode = null,
@@ -411,7 +427,7 @@ class __$$UpdateParamsImplCopyWithImpl<$Res>
     Object? unifiedDelay = null,
   }) {
     return _then(_$UpdateParamsImpl(
-      tun: freezed == tun
+      tun: null == tun
           ? _value.tun
           : tun // ignore: cast_nullable_to_non_nullable
               as Tun,
@@ -459,7 +475,7 @@ class __$$UpdateParamsImplCopyWithImpl<$Res>
 @JsonSerializable()
 class _$UpdateParamsImpl implements _UpdateParams {
   const _$UpdateParamsImpl(
-      {required this.tun,
+      {@JsonKey(fromJson: Tun.safeFormJson) required this.tun,
       @JsonKey(name: 'mixed-port') required this.mixedPort,
       @JsonKey(name: 'allow-lan') required this.allowLan,
       @JsonKey(name: 'find-process-mode') required this.findProcessMode,
@@ -474,6 +490,7 @@ class _$UpdateParamsImpl implements _UpdateParams {
       _$$UpdateParamsImplFromJson(json);
 
   @override
+  @JsonKey(fromJson: Tun.safeFormJson)
   final Tun tun;
   @override
   @JsonKey(name: 'mixed-port')
@@ -511,7 +528,7 @@ class _$UpdateParamsImpl implements _UpdateParams {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$UpdateParamsImpl &&
-            const DeepCollectionEquality().equals(other.tun, tun) &&
+            (identical(other.tun, tun) || other.tun == tun) &&
             (identical(other.mixedPort, mixedPort) ||
                 other.mixedPort == mixedPort) &&
             (identical(other.allowLan, allowLan) ||
@@ -534,7 +551,7 @@ class _$UpdateParamsImpl implements _UpdateParams {
   @override
   int get hashCode => Object.hash(
       runtimeType,
-      const DeepCollectionEquality().hash(tun),
+      tun,
       mixedPort,
       allowLan,
       findProcessMode,
@@ -563,7 +580,7 @@ class _$UpdateParamsImpl implements _UpdateParams {
 
 abstract class _UpdateParams implements UpdateParams {
   const factory _UpdateParams(
-          {required final Tun tun,
+          {@JsonKey(fromJson: Tun.safeFormJson) required final Tun tun,
           @JsonKey(name: 'mixed-port') required final int mixedPort,
           @JsonKey(name: 'allow-lan') required final bool allowLan,
           @JsonKey(name: 'find-process-mode')
@@ -581,6 +598,7 @@ abstract class _UpdateParams implements UpdateParams {
       _$UpdateParamsImpl.fromJson;
 
   @override
+  @JsonKey(fromJson: Tun.safeFormJson)
   Tun get tun;
   @override
   @JsonKey(name: 'mixed-port')

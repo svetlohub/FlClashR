@@ -233,3 +233,21 @@ Map<String, dynamic> _$$ScriptImplToJson(_$ScriptImpl instance) =>
       'label': instance.label,
       'content': instance.content,
     };
+
+_$SubscriptionInfoImpl _$$SubscriptionInfoImplFromJson(
+        Map<String, dynamic> json) =>
+    _$SubscriptionInfoImpl(
+      upload: (json['upload'] as num?)?.toInt() ?? 0,
+      download: (json['download'] as num?)?.toInt() ?? 0,
+      total: (json['total'] as num?)?.toInt() ?? 0,
+      expire: (json['expire'] as num?)?.toInt() ?? 0,
+    );
+
+Map<String, dynamic> _$$SubscriptionInfoImplToJson(
+        _$SubscriptionInfoImpl instance) =>
+    <String, dynamic>{
+      'upload': instance.upload,
+      'download': instance.download,
+      'total': instance.total,
+      'expire': instance.expire,
+    };

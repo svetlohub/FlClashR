@@ -4512,6 +4512,7 @@ abstract class $ProfileOverrideStateModelCopyWith<$Res> {
       Set<String> selectedRules,
       OverrideData? overrideData});
 
+  $ClashConfigSnippetCopyWith<$Res>? get snippet;
   $OverrideDataCopyWith<$Res>? get overrideData;
 }
 
@@ -4555,6 +4556,20 @@ class _$ProfileOverrideStateModelCopyWithImpl<$Res,
   /// with the given fields replaced by the non-null parameter values.
   @override
   @pragma('vm:prefer-inline')
+  $ClashConfigSnippetCopyWith<$Res>? get snippet {
+    if (_value.snippet == null) {
+      return null;
+    }
+
+    return $ClashConfigSnippetCopyWith<$Res>(_value.snippet!, (value) {
+      return _then(_value.copyWith(snippet: value) as $Val);
+    });
+  }
+
+  /// Create a copy of ProfileOverrideStateModel
+  /// with the given fields replaced by the non-null parameter values.
+  @override
+  @pragma('vm:prefer-inline')
   $OverrideDataCopyWith<$Res>? get overrideData {
     if (_value.overrideData == null) {
       return null;
@@ -4580,6 +4595,8 @@ abstract class _$$ProfileOverrideStateModelImplCopyWith<$Res>
       Set<String> selectedRules,
       OverrideData? overrideData});
 
+  @override
+  $ClashConfigSnippetCopyWith<$Res>? get snippet;
   @override
   $OverrideDataCopyWith<$Res>? get overrideData;
 }
@@ -4652,7 +4669,7 @@ class _$ProfileOverrideStateModelImpl implements _ProfileOverrideStateModel {
     return identical(this, other) ||
         (other.runtimeType == runtimeType &&
             other is _$ProfileOverrideStateModelImpl &&
-            const DeepCollectionEquality().equals(other.snippet, snippet) &&
+            (identical(other.snippet, snippet) || other.snippet == snippet) &&
             const DeepCollectionEquality()
                 .equals(other._selectedRules, _selectedRules) &&
             (identical(other.overrideData, overrideData) ||
@@ -4660,11 +4677,8 @@ class _$ProfileOverrideStateModelImpl implements _ProfileOverrideStateModel {
   }
 
   @override
-  int get hashCode => Object.hash(
-      runtimeType,
-      const DeepCollectionEquality().hash(snippet),
-      const DeepCollectionEquality().hash(_selectedRules),
-      overrideData);
+  int get hashCode => Object.hash(runtimeType, snippet,
+      const DeepCollectionEquality().hash(_selectedRules), overrideData);
 
   /// Create a copy of ProfileOverrideStateModel
   /// with the given fields replaced by the non-null parameter values.
