@@ -5,7 +5,6 @@ import 'package:flclashx/l10n/l10n.dart';
 import 'package:flclashx/models/models.dart';
 import 'package:flclashx/providers/providers.dart';
 import 'package:flclashx/state.dart';
-import 'package:flclashx/views/about.dart';
 import 'package:flclashx/views/access.dart';
 import 'package:flclashx/views/application_setting.dart';
 import 'package:flclashx/views/config/config.dart';
@@ -58,7 +57,6 @@ class _ToolboxViewState extends ConsumerState<ToolsView> {
       items: [
         const _DisclaimerItem(),
         if (enableDeveloperMode) const _DeveloperItem(),
-        const _InfoItem(),
       ],
     );
 
@@ -292,22 +290,6 @@ class _DisclaimerItem extends StatelessWidget {
   }
 }
 
-class _InfoItem extends StatelessWidget {
-  const _InfoItem();
-
-  @override
-  Widget build(BuildContext context) {
-    final appLocale = AppLocalizations.of(context);
-    return ListItem.open(
-      leading: const Icon(Icons.info),
-      title: Text(appLocale.about),
-      delegate: OpenDelegate(
-        title: appLocale.about,
-        widget: const AboutView(),
-      ),
-    );
-  }
-}
 
 class _DeveloperItem extends StatelessWidget {
   const _DeveloperItem();
