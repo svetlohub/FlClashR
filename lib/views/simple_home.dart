@@ -11,8 +11,8 @@ import 'package:flclashx/models/models.dart';
 import 'package:flclashx/providers/providers.dart';
 import 'package:flclashx/state.dart';
 import 'package:flclashx/theme/app_theme.dart';
-import 'package:flclashx/views/about.dart';
 import 'package:flclashx/views/profiles/profiles.dart';
+import 'package:flclashx/views/service_toggles.dart';
 import 'package:flclashx/views/proxies/proxies.dart';
 import 'package:flclashx/views/subscription_converter.dart';
 import 'package:flutter/material.dart';
@@ -234,7 +234,7 @@ class _ImportDialogState extends State<ImportDialog> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SettingsView — tabbed: Subscriptions · Proxies · About
+// SettingsView — tabbed: Subscriptions · Services
 // ─────────────────────────────────────────────────────────────────────────────
 class SettingsView extends StatelessWidget {
   const SettingsView({super.key});
@@ -247,7 +247,7 @@ class SettingsView extends StatelessWidget {
     final textSec = isDark ? AppColors.darkT2    : AppColors.lightT2;
 
     return DefaultTabController(
-      length: 3,
+      length: 2,
       child: Scaffold(
         backgroundColor: bg,
         appBar: AppBar(
@@ -268,15 +268,13 @@ class SettingsView extends StatelessWidget {
             tabs: const [
               Tab(text: 'Подписки'),
               Tab(text: 'Прокси'),
-              Tab(text: 'О приложении'),
             ],
           ),
         ),
         body: const TabBarView(
           children: [
             ProfilesView(),
-            ProxiesView(),
-            AboutView(),
+            ServiceTogglesView(),
           ],
         ),
       ),
