@@ -442,6 +442,12 @@ class OverrideData with _$OverrideData {
 }
 
 extension OverrideDataExt on OverrideData {
+  /// Returns active rule strings when override is enabled, empty list otherwise.
+  List<String> get runningRule {
+    if (!enable) return [];
+    return rule.rules.map((item) => item.value).toList();
+  }
+
   OverrideData applyRules(List<Rule> Function(List<Rule> rules) builder) {
     return copyWith(rule: rule.updateRules(builder));
   }
