@@ -41,7 +41,7 @@ class GlobalState {
   Timer? groupsUpdateTimer;
   late Config config;
   late AppState appState;
-  bool isPre = true;
+  bool isPre = false;
   String? coreSHA256;
   String? coreVersion;
   late PackageInfo packageInfo;
@@ -69,7 +69,7 @@ class GlobalState {
   Future<void> initApp(int version) async {
     coreSHA256 = const String.fromEnvironment("CORE_SHA256");
     coreVersion = const String.fromEnvironment("CORE_VERSION");
-    isPre = const String.fromEnvironment("APP_ENV") != 'stable';
+    isPre = false; // Always stable — PRE banner disabled
     appState = AppState(
       version: version,
       viewSize: Size.zero,
