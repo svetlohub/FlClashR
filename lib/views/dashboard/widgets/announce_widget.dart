@@ -1,4 +1,5 @@
 import 'dart:convert';
+
 import 'package:flclashx/providers/providers.dart';
 import 'package:flclashx/state.dart';
 import 'package:flclashx/widgets/widgets.dart';
@@ -9,89 +10,62 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 class AnnounceWidget extends ConsumerWidget {
   const AnnounceWidget({super.key});
 
-  List<InlineSpan> _buildTextSpans(BuildContext context, String text) {
-    final urlPattern = RegExp(
-      r'https?://[^\s]+',
-      caseSensitive: false,
-    );
-    
-    final spans = <InlineSpan>[];
-    var lastIndex = 0;
-    
-    for (final match in urlPattern.allMatches(text)) {
-      if (match.start > lastIndex) {
-        spans.add(TextSpan(
-          text: text.substring(lastIndex, match.start),
-          style: Theme.of(context).textTheme.bodyLarge,
-        ));
-      }
-      
-      final url = match.group(0)!;
-      spans.add(TextSpan(
-        text: url,
-        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-          color: Theme.of(context).colorScheme.primary,
-        ),
-        recognizer: TapGestureRecognizer()
-          ..onTap = () {
-            globalState.openUrl(url);
-          },
-      ));
-      
-      lastIndex = match.end;
-    }
-    
-    if (lastIndex < text.length) {
-      spans.add(TextSpan(
-        text: text.substring(lastIndex),
-        style: Theme.of(context).textTheme.bodyLarge,
-      ));
-    }
-    
-    return spans;
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final profile = ref.watch(currentProfileProvider);
-
-    if (profile == null) {
-      return const SizedBox.shrink();
-    }
-
-    final encodedText = profile.providerHeaders['announce'];
-    String? announceText;
-
-    if (encodedText != null && encodedText.isNotEmpty) {
-      var textToDecode = encodedText;
-      if (encodedText.startsWith('base64:')) {
-        textToDecode = encodedText.substring(7);
-      }
-      try {
-        final normalized = base64.normalize(textToDecode);
-        announceText = utf8.decode(base64.decode(normalized));
-      } catch (e) {
-        announceText = encodedText;
-      }
-    }
-
-    if (announceText == null || announceText.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    final text = _resolveText(ref);
+    if (text == null) return const SizedBox.shrink();
 
     return CommonCard(
       onPressed: null,
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
-        child: Align(
-          alignment: Alignment.topLeft,
-          child: RichText(
-            text: TextSpan(
-              children: _buildTextSpans(context, announceText),
-            ),
-          ),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: RichText(
+          text: TextSpan(children: _buildSpans(context, text)),
         ),
       ),
     );
+  }
+
+  String? _resolveText(WidgetRef ref) {
+    final headers = ref.watch(currentProfileProvider)?.providerHeaders;
+    final raw = headers?['announce'];
+    if (raw == null || raw.isEmpty) return null;
+
+    final toDecode = raw.startsWith('base64:') ? raw.substring(7) : raw;
+    try {
+      return utf8.decode(base64.decode(base64.normalize(toDecode)));
+    } catch (_) {
+      return raw; // fall back to raw if not valid base64
+    }
+  }
+
+  static final _urlRe = RegExp(r'https?://\S+', caseSensitive: false);
+
+  List<InlineSpan> _buildSpans(BuildContext context, String text) {
+    final style     = Theme.of(context).textTheme.bodyLarge;
+    final linkStyle = style?.copyWith(
+      color: Theme.of(context).colorScheme.primary,
+    );
+
+    final spans = <InlineSpan>[];
+    var cursor = 0;
+
+    for (final m in _urlRe.allMatches(text)) {
+      if (m.start > cursor) {
+        spans.add(TextSpan(text: text.substring(cursor, m.start), style: style));
+      }
+      final url = m.group(0)!;
+      spans.add(TextSpan(
+        text: url,
+        style: linkStyle,
+        recognizer: TapGestureRecognizer()..onTap = () => globalState.openUrl(url),
+      ));
+      cursor = m.end;
+    }
+
+    if (cursor < text.length) {
+      spans.add(TextSpan(text: text.substring(cursor), style: style));
+    }
+    return spans;
   }
 }
