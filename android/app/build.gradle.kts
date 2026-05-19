@@ -14,16 +14,22 @@ val localProperties = Properties().apply {
     }
 }
 
+// Keystore from environment (CI) or local.properties (local dev)
+val mStorePassword: String = System.getenv("STORE_PASSWORD")
+    ?: localProperties.getProperty("storePassword")
+    ?: "changeme"
+val mKeyAlias: String = System.getenv("KEY_ALIAS")
+    ?: localProperties.getProperty("keyAlias")
+    ?: "raketa"
+val mKeyPassword: String = System.getenv("KEY_PASSWORD")
+    ?: localProperties.getProperty("keyPassword")
+    ?: "changeme"
+
+// keystore.jks is written by CI from the KEYSTORE_BASE64 secret
 val mStoreFile: File = file("keystore.jks")
-val mStorePassword: String = localProperties.getProperty("storePassword") ?: "123456"
-val mKeyAlias: String = localProperties.getProperty("keyAlias") ?: "flclashr"
-val mKeyPassword: String = localProperties.getProperty("keyPassword") ?: "123456"
 val isRelease = mStoreFile.exists()
 
 android {
-    // namespace ДОЛЖЕН совпадать с package в Kotlin-файлах (com.follow.clashx)
-    // applicationId — уникальный ID нашего приложения (com.follow.clashr)
-    // Это разные вещи, их можно и нужно разделять
     namespace = "com.follow.clashx"
     compileSdk = 36
 
@@ -58,7 +64,6 @@ android {
 
     buildTypes {
         release {
-            // R8 minification: reduces APK size ~30%, improves startup time
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
