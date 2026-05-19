@@ -247,7 +247,7 @@ class SettingsView extends StatelessWidget {
     final textSec = isDark ? AppColors.darkT2    : AppColors.lightT2;
 
     return DefaultTabController(
-      length: 2,
+      length: 3,
       child: Scaffold(
         backgroundColor: bg,
         appBar: AppBar(
@@ -267,13 +267,15 @@ class SettingsView extends StatelessWidget {
             unselectedLabelStyle: AppFonts.body(textSec, size: 13),
             tabs: const [
               Tab(text: 'Подписки'),
-              Tab(text: 'Прокси'),
+              Tab(text: 'Серверы'),
+              Tab(text: 'Сервисы'),
             ],
           ),
         ),
         body: const TabBarView(
           children: [
             ProfilesView(),
+            ProxiesView(),
             ServiceTogglesView(),
           ],
         ),
