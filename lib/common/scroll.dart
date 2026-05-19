@@ -5,6 +5,7 @@ import 'package:flclashx/common/common.dart';
 import 'package:flclashx/widgets/scroll.dart';
 import 'package:flutter/material.dart';
 
+/// Accepts touch, stylus, trackpad, and mouse (desktop only) as drag devices.
 class BaseScrollBehavior extends MaterialScrollBehavior {
   @override
   Set<PointerDeviceKind> get dragDevices => {
@@ -17,71 +18,47 @@ class BaseScrollBehavior extends MaterialScrollBehavior {
       };
 }
 
+/// No scrollbar — used for tab bodies and inner lists.
 class HiddenBarScrollBehavior extends BaseScrollBehavior {
   @override
-  Widget buildScrollbar(
-    BuildContext context,
-    Widget child,
-    ScrollableDetails details,
-  ) => child;
+  Widget buildScrollbar(BuildContext context, Widget child, ScrollableDetails details) => child;
 }
 
+/// Auto-hiding scrollbar.
 class ShowBarScrollBehavior extends BaseScrollBehavior {
   @override
-  Widget buildScrollbar(
-    BuildContext context,
-    Widget child,
-    ScrollableDetails details,
-  ) => CommonAutoHiddenScrollBar(
-      controller: details.controller,
-      child: child,
-    );
+  Widget buildScrollbar(BuildContext context, Widget child, ScrollableDetails details) =>
+      CommonAutoHiddenScrollBar(controller: details.controller, child: child);
 }
 
+/// Clamping physics with a spring snap when out-of-range instead of an
+/// abrupt stop. Feels closer to native Android on desktop.
 class NextClampingScrollPhysics extends ClampingScrollPhysics {
   const NextClampingScrollPhysics({super.parent});
 
   @override
-  NextClampingScrollPhysics applyTo(ScrollPhysics? ancestor) => NextClampingScrollPhysics(parent: buildParent(ancestor));
+  NextClampingScrollPhysics applyTo(ScrollPhysics? ancestor) =>
+      NextClampingScrollPhysics(parent: buildParent(ancestor));
 
   @override
-  Simulation? createBallisticSimulation(
-      ScrollMetrics position, double velocity) {
-    final tolerance = toleranceFor(position);
-    if (position.outOfRange) {
-      double? end;
-      if (position.pixels > position.maxScrollExtent) {
-        end = position.maxScrollExtent;
-      }
-      if (position.pixels < position.minScrollExtent) {
-        end = position.minScrollExtent;
-      }
-      assert(end != null);
-      return ScrollSpringSimulation(
-        spring,
-        end!,
-        end,
-        min(0.0, velocity),
-        tolerance: tolerance,
-      );
+  Simulation? createBallisticSimulation(ScrollMetrics pos, double velocity) {
+    final tol = toleranceFor(pos);
+    if (pos.outOfRange) {
+      final end = pos.pixels > pos.maxScrollExtent
+          ? pos.maxScrollExtent
+          : pos.minScrollExtent;
+      return ScrollSpringSimulation(spring, end, end, min(0.0, velocity),
+          tolerance: tol);
     }
-    if (velocity.abs() < tolerance.velocity) {
-      return null;
-    }
-    if (velocity > 0.0 && position.pixels >= position.maxScrollExtent) {
-      return null;
-    }
-    if (velocity < 0.0 && position.pixels <= position.minScrollExtent) {
-      return null;
-    }
+    if (velocity.abs() < tol.velocity) return null;
+    if (velocity > 0.0 && pos.pixels >= pos.maxScrollExtent) return null;
+    if (velocity < 0.0 && pos.pixels <= pos.minScrollExtent) return null;
     return ClampingScrollSimulation(
-      position: position.pixels,
-      velocity: velocity,
-      tolerance: tolerance,
-    );
+        position: pos.pixels, velocity: velocity, tolerance: tol);
   }
 }
 
+/// A scroll controller that initialises at the bottom of the list.
 class ReverseScrollController extends ScrollController {
   ReverseScrollController({
     super.initialScrollOffset,
@@ -94,18 +71,19 @@ class ReverseScrollController extends ScrollController {
     ScrollPhysics physics,
     ScrollContext context,
     ScrollPosition? oldPosition,
-  ) => ReverseScrollPosition(
-      physics: physics,
-      context: context,
-      initialPixels: initialScrollOffset,
-      keepScrollOffset: keepScrollOffset,
-      oldPosition: oldPosition,
-      debugLabel: debugLabel,
-    );
+  ) =>
+      _ReverseScrollPosition(
+        physics: physics,
+        context: context,
+        initialPixels: initialScrollOffset,
+        keepScrollOffset: keepScrollOffset,
+        oldPosition: oldPosition,
+        debugLabel: debugLabel,
+      );
 }
 
-class ReverseScrollPosition extends ScrollPositionWithSingleContext {
-  ReverseScrollPosition({
+class _ReverseScrollPosition extends ScrollPositionWithSingleContext {
+  _ReverseScrollPosition({
     required super.physics,
     required super.context,
     super.initialPixels = 0.0,
@@ -114,13 +92,13 @@ class ReverseScrollPosition extends ScrollPositionWithSingleContext {
     super.debugLabel,
   });
 
-  bool _isInit = false;
+  bool _initialised = false;
 
   @override
   bool applyContentDimensions(double minScrollExtent, double maxScrollExtent) {
-    if (!_isInit) {
+    if (!_initialised) {
       correctPixels(maxScrollExtent);
-      _isInit = true;
+      _initialised = true;
     }
     return super.applyContentDimensions(minScrollExtent, maxScrollExtent);
   }
