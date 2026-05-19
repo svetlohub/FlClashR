@@ -1,47 +1,101 @@
 import 'package:flutter/material.dart';
 
-/// Measures text sizes using the current theme and text scaler.
-/// Results are cached per style key to avoid redundant layout passes.
 class Measure {
+
   Measure.of(this.context, double textScaleFactor)
-      : _scaler = TextScaler.linear(textScaleFactor);
-
+      : _measureMap = {},
+        _textScaler = TextScaler.linear(
+          textScaleFactor,
+        );
+  final TextScaler _textScaler;
   final BuildContext context;
-  final TextScaler _scaler;
-  final _cache = <String, double>{};
+  final Map<String, double> _measureMap;
 
-  /// Returns the line height for the given [style], caching by [key].
-  double _lineHeight(String key, TextStyle? style) =>
-      _cache.putIfAbsent(key, () => _measure('X', style).height);
-
-  Size _measure(String text, TextStyle? style) {
-    final painter = TextPainter(
-      text: TextSpan(text: text, style: style),
-      maxLines: 1,
-      textScaler: _scaler,
-      textDirection: TextDirection.ltr,
-    )..layout();
-    return painter.size;
+  Size computeTextSize(
+    Text text, {
+    double maxWidth = double.infinity,
+  }) {
+    final textPainter = TextPainter(
+      text: TextSpan(
+        text: text.data,
+        style: text.style,
+      ),
+      maxLines: text.maxLines,
+      textScaler: _textScaler,
+      textDirection: text.textDirection ?? TextDirection.ltr,
+    )..layout(
+        maxWidth: maxWidth,
+      );
+    return textPainter.size;
   }
 
-  // ─── Convenience getters ──────────────────────────────────────────────────
+  double get bodyMediumHeight => _measureMap.updateCacheValue(
+        "bodyMediumHeight",
+        () => computeTextSize(
+          Text(
+            "X",
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ).height,
+      )!;
 
-  double get bodyMediumHeight  => _lineHeight('bodyMedium',  context.textTheme.bodyMedium);
-  double get bodyLargeHeight   => _lineHeight('bodyLarge',   context.textTheme.bodyLarge);
-  double get bodySmallHeight   => _lineHeight('bodySmall',   context.textTheme.bodySmall);
-  double get labelSmallHeight  => _lineHeight('labelSmall',  context.textTheme.labelSmall);
-  double get labelMediumHeight => _lineHeight('labelMedium', context.textTheme.labelMedium);
-  double get titleLargeHeight  => _lineHeight('titleLarge',  context.textTheme.titleLarge);
-  double get titleMediumHeight => _lineHeight('titleMedium', context.textTheme.titleMedium);
+  double get bodyLargeHeight => _measureMap.updateCacheValue(
+        "bodyLargeHeight",
+        () => computeTextSize(
+          Text(
+            "X",
+            style: Theme.of(context).textTheme.bodyLarge,
+          ),
+        ).height,
+      )!;
 
-  /// Measures arbitrary text with an explicit style.
-  Size computeTextSize(Text widget, {double maxWidth = double.infinity}) {
-    final painter = TextPainter(
-      text: TextSpan(text: widget.data, style: widget.style),
-      maxLines: widget.maxLines,
-      textScaler: _scaler,
-      textDirection: widget.textDirection ?? TextDirection.ltr,
-    )..layout(maxWidth: maxWidth);
-    return painter.size;
-  }
+  double get bodySmallHeight => _measureMap.updateCacheValue(
+        "bodySmallHeight",
+        () => computeTextSize(
+          Text(
+            "X",
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+        ).height,
+      )!;
+
+  double get labelSmallHeight => _measureMap.updateCacheValue(
+        "labelSmallHeight",
+        () => computeTextSize(
+          Text(
+            "X",
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
+        ).height,
+      )!;
+
+  double get labelMediumHeight => _measureMap.updateCacheValue(
+        "labelMediumHeight",
+        () => computeTextSize(
+          Text(
+            "X",
+            style: Theme.of(context).textTheme.labelMedium,
+          ),
+        ).height,
+      )!;
+
+  double get titleLargeHeight => _measureMap.updateCacheValue(
+        "titleLargeHeight",
+        () => computeTextSize(
+          Text(
+            "X",
+            style: Theme.of(context).textTheme.titleLarge,
+          ),
+        ).height,
+      )!;
+
+  double get titleMediumHeight => _measureMap.updateCacheValue(
+        "titleMediumHeight",
+        () => computeTextSize(
+          Text(
+            "X",
+            style: Theme.of(context).textTheme.titleMedium,
+          ),
+        ).height,
+      )!;
 }
