@@ -6,38 +6,28 @@ import 'package:flclashx/state.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+/// Wraps the app tree and shows a system notification when VPN becomes active.
 class VpnManager extends ConsumerStatefulWidget {
-
-  const VpnManager({
-    super.key,
-    required this.child,
-  });
+  const VpnManager({super.key, required this.child});
   final Widget child;
 
   @override
-  ConsumerState<VpnManager> createState() => _VpnContainerState();
+  ConsumerState<VpnManager> createState() => _VpnManagerState();
 }
 
-class _VpnContainerState extends ConsumerState<VpnManager> {
+class _VpnManagerState extends ConsumerState<VpnManager> {
   @override
   void initState() {
     super.initState();
-    ref.listenManual(vpnStateProvider, (prev, next) {
-      showTip();
-    });
+    ref.listenManual(vpnStateProvider, (_, __) => _maybeShowTip());
   }
 
-  void showTip() {
-    debouncer.call(
-      FunctionTag.vpnTip,
-      () {
-        if (ref.read(runTimeProvider.notifier).isStart) {
-          globalState.showNotifier(
-            appLocalizations.vpnTip,
-          );
-        }
-      },
-    );
+  void _maybeShowTip() {
+    debouncer.call(FunctionTag.vpnTip, () {
+      if (ref.read(runTimeProvider.notifier).isStart) {
+        globalState.showNotifier(appLocalizations.vpnTip);
+      }
+    });
   }
 
   @override
