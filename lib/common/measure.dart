@@ -1,5 +1,4 @@
 import 'package:flclashx/common/common.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
 class Measure {
@@ -36,7 +35,7 @@ class Measure {
         () => computeTextSize(
           Text(
             "X",
-            style: context.textTheme.bodyMedium,
+            style: Theme.of(context).textTheme.bodyMedium,
           ),
         ).height,
       )!;
@@ -46,7 +45,7 @@ class Measure {
         () => computeTextSize(
           Text(
             "X",
-            style: context.textTheme.bodyLarge,
+            style: Theme.of(context).textTheme.bodyLarge,
           ),
         ).height,
       )!;
@@ -56,7 +55,7 @@ class Measure {
         () => computeTextSize(
           Text(
             "X",
-            style: context.textTheme.bodySmall,
+            style: Theme.of(context).textTheme.bodySmall,
           ),
         ).height,
       )!;
@@ -66,7 +65,7 @@ class Measure {
         () => computeTextSize(
           Text(
             "X",
-            style: context.textTheme.labelSmall,
+            style: Theme.of(context).textTheme.labelSmall,
           ),
         ).height,
       )!;
@@ -76,7 +75,7 @@ class Measure {
         () => computeTextSize(
           Text(
             "X",
-            style: context.textTheme.labelMedium,
+            style: Theme.of(context).textTheme.labelMedium,
           ),
         ).height,
       )!;
@@ -86,7 +85,7 @@ class Measure {
         () => computeTextSize(
           Text(
             "X",
-            style: context.textTheme.titleLarge,
+            style: Theme.of(context).textTheme.titleLarge,
           ),
         ).height,
       )!;
@@ -96,7 +95,7 @@ class Measure {
         () => computeTextSize(
           Text(
             "X",
-            style: context.textTheme.titleMedium,
+            style: Theme.of(context).textTheme.titleMedium,
           ),
         ).height,
       )!;
