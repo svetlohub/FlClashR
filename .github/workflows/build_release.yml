@@ -16,7 +16,6 @@ jobs:
   build:
     name: Build Android APK
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -45,14 +44,10 @@ jobs:
           channel: stable
           cache: true
 
-      - name: Restore keystore and write local.properties
+      - name: Restore keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > android/app/keystore.jks
-          # Write signing credentials to local.properties so Gradle picks them up reliably
-          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> android/local.properties
-          echo "keyAlias=${{ secrets.KEY_ALIAS }}"              >> android/local.properties
-          echo "keyPassword=${{ secrets.KEY_PASSWORD }}"        >> android/local.properties
-          # Verify keystore is valid
+          # Проверка валидности файла прямо во время выполнения
           keytool -list -keystore android/app/keystore.jks \
             -storepass "${{ secrets.KEYSTORE_PASSWORD }}" -noprompt
 
@@ -76,7 +71,17 @@ jobs:
           ANDROID_NDK: ${{ env.ANDROID_NDK }}
 
       - name: Build APK
+        env:
+          STORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
+          # Записываем данные в local.properties непосредственно перед компиляцией,
+          # чтобы Flutter не смог перетереть их на предыдущих этапах
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" >> android/local.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}"              >> android/local.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}"        >> android/local.properties
+          
           flutter build apk --release \
             --target-platform android-arm64 \
             --split-per-abi
