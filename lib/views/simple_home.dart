@@ -1,9 +1,8 @@
+// ignore_for_file: unused_import
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:dio/dio.dart';
-import 'package:flclashx/clash/clash.dart';
 import 'package:flclashx/common/common.dart';
 import 'package:flclashx/common/russia_preset.dart';
 import 'package:flclashx/core/crash_logger.dart';
@@ -12,28 +11,20 @@ import 'package:flclashx/providers/providers.dart';
 import 'package:flclashx/state.dart';
 import 'package:flclashx/theme/app_theme.dart';
 import 'package:flclashx/views/profiles/profiles.dart';
-import 'package:flclashx/views/service_toggles.dart';
 import 'package:flclashx/views/proxies/proxies.dart';
+import 'package:flclashx/views/service_toggles.dart';
 import 'package:flclashx/views/subscription_converter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// ─── Layout constants ─────────────────────────────────────────────────────────
-const _kRadius        = 16.0;
-const _kRadiusSm      = 14.0;
-const _kRadiusBtn     = 16.0;
-const _kBtnHeight     = 64.0;
-const _kLogoBoxSize   = 72.0;
-const _kLogoBoxRadius = 20.0;
-const _kHPad          = 20.0;
-const _kCardPadV      = 28.0;
-const _kCardPadH      = 20.0;
-const _kToggleDur     = Duration(milliseconds: 220);
-const _kPulseDur      = Duration(milliseconds: 1200);
-const _kSnackDur      = Duration(seconds: 4);
+// ─── Constants ────────────────────────────────────────────────────────────────
+const _kSnackDur    = Duration(seconds: 4);
+const _kToggleDur   = Duration(milliseconds: 300);
+const _kPulseDur    = Duration(milliseconds: 1400);
+const _kSpringCurve = Curves.easeOutCubic;
 
-// ─── Shared import helper ──────────────────────────────────────────────────────
+// ─── doProfileImport (shared top-level) ──────────────────────────────────────
 Future<void> doProfileImport({
   required String url,
   required WidgetRef ref,
@@ -43,14 +34,9 @@ Future<void> doProfileImport({
     bool ready = false;
     for (int i = 0; i < 40; i++) {
       await Future<void>.delayed(const Duration(milliseconds: 500));
-      if (globalState.appState.isInit) {
-        ready = true;
-        break;
-      }
+      if (globalState.appState.isInit) { ready = true; break; }
     }
-    if (!ready) {
-      throw 'Ядро VPN ещё не готово. Подождите несколько секунд и попробуйте снова.';
-    }
+    if (!ready) throw 'Ядро VPN ещё не готово. Подождите и попробуйте снова.';
   }
 
   final prefs  = await SharedPreferences.getInstance();
@@ -64,9 +50,7 @@ Future<void> doProfileImport({
         .update(shouldSendHeaders: sendHd)
         .timeout(const Duration(seconds: 60),
             onTimeout: () => throw 'Превышено время ожидания (60 с).');
-  } catch (e) {
-    firstError = e;
-  }
+  } catch (e) { firstError = e; }
 
   if (profile == null) {
     Uint8List? rawBytes;
@@ -75,27 +59,19 @@ Future<void> doProfileImport({
           .getFileResponseForUrl(url)
           .timeout(const Duration(seconds: 30));
       rawBytes = resp.data;
-    } catch (e) {
-      throw firstError ?? e;
-    }
+    } catch (e) { throw firstError ?? e; }
 
-    if (rawBytes == null || rawBytes.isEmpty) {
-      throw firstError ?? 'Пустой ответ сервера.';
-    }
+    if (rawBytes == null || rawBytes.isEmpty) throw firstError ?? 'Пустой ответ сервера.';
 
     final rawText = utf8.decode(rawBytes, allowMalformed: true).trim();
-
     if (rawText.toLowerCase().startsWith('<!doctype') ||
         rawText.toLowerCase().startsWith('<html')) {
       throw 'Сервер вернул HTML вместо подписки. Проверьте ссылку.';
     }
-
     try {
       final yaml = convertSubscriptionToClashYaml(rawText);
       profile = await base.saveFileWithString(yaml);
-    } catch (e) {
-      throw 'Ошибка обработки подписки: $e';
-    }
+    } catch (e) { throw 'Ошибка обработки подписки: $e'; }
   }
 
   ref.read(profilesProvider.notifier).setProfile(profile!);
@@ -106,86 +82,71 @@ Future<void> doProfileImport({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// ImportDialog — URL input dialog
+// ImportDialog
 // ─────────────────────────────────────────────────────────────────────────────
 class ImportDialog extends StatefulWidget {
-  final Future<void> Function(String url) onImport;
-
   const ImportDialog({super.key, required this.onImport});
+  final Future<void> Function(String url) onImport;
 
   @override
   State<ImportDialog> createState() => _ImportDialogState();
 }
 
 class _ImportDialogState extends State<ImportDialog> {
-  final _ctrl = TextEditingController();
-  bool _loading = false;
+  final _ctrl    = TextEditingController();
+  bool  _loading = false;
 
   @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _ctrl.dispose(); super.dispose(); }
 
   Future<void> _submit() async {
     final url = _ctrl.text.trim();
     if (url.isEmpty) return;
     setState(() => _loading = true);
-    try {
-      await widget.onImport(url);
-    } finally {
-      if (mounted) setState(() => _loading = false);
-    }
+    try { await widget.onImport(url); }
+    finally { if (mounted) setState(() => _loading = false); }
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark   = context.isDark;
-    final surface  = isDark ? AppColors.darkSurface  : AppColors.lightSurface;
-    final textPri  = isDark ? AppColors.darkT1       : AppColors.lightT1;
-    final textSec  = isDark ? AppColors.darkT2       : AppColors.lightT2;
-    final borderC  = isDark ? AppColors.darkBorder   : AppColors.lightBorder;
+    final cs    = Theme.of(context).colorScheme;
+    final isDark = context.isDark;
 
     return Dialog(
-      backgroundColor: surface,
-      shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(_kRadius)),
+      backgroundColor: cs.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Импорт подписки', style: AppFonts.heading(textPri)),
-            const SizedBox(height: 6),
-            Text(
-              'Вставьте ссылку на YAML-подписку',
-              style: AppFonts.body(textSec, size: 13),
-            ),
+            Text('Импорт подписки',
+                style: AppFonts.heading(cs.onSurface)),
+            const SizedBox(height: 4),
+            Text('Вставьте ссылку YAML-подписки',
+                style: AppFonts.body(cs.onSurfaceVariant, size: 13)),
             const SizedBox(height: 16),
             TextField(
               controller: _ctrl,
               autofocus: true,
-              style: AppFonts.body(textPri),
+              style: AppFonts.body(cs.onSurface),
               decoration: InputDecoration(
                 hintText: 'https://',
-                hintStyle: AppFonts.body(
-                  isDark ? AppColors.darkT3 : AppColors.lightT3,
-                ),
+                hintStyle: AppFonts.body(cs.outline),
                 filled: true,
                 fillColor: isDark ? AppColors.darkBg : AppColors.lightBg,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: borderC),
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: cs.outline),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide: BorderSide(color: borderC),
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: cs.outline),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(10),
-                  borderSide:
-                      const BorderSide(color: AppColors.violet, width: 2),
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: cs.primary, width: 2),
                 ),
                 contentPadding: const EdgeInsets.symmetric(
                     horizontal: 14, vertical: 13),
@@ -198,31 +159,20 @@ class _ImportDialogState extends State<ImportDialog> {
               children: [
                 TextButton(
                   onPressed: _loading ? null : () => Navigator.of(context).pop(),
-                  child: Text('Отмена', style: AppFonts.btnGhost(textSec)),
+                  child: Text('Отмена',
+                      style: AppFonts.btnGhost(cs.onSurfaceVariant)),
                 ),
                 const SizedBox(width: 8),
                 if (_loading)
-                  const SizedBox(
-                    width: 36,
-                    height: 36,
-                    child: Center(
-                      child: CircularProgressIndicator(
-                          strokeWidth: 2, color: AppColors.violet),
-                    ),
+                  SizedBox(
+                    width: 36, height: 36,
+                    child: Center(child: CircularProgressIndicator(
+                        strokeWidth: 2, color: cs.primary)),
                   )
                 else
                   FilledButton(
                     onPressed: _submit,
-                    style: FilledButton.styleFrom(
-                      backgroundColor: AppColors.violet,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10)),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 20, vertical: 12),
-                    ),
-                    child: Text('Добавить',
-                        style: AppFonts.btnPrimary(Colors.white)),
+                    child: const Text('Добавить'),
                   ),
               ],
             ),
@@ -234,17 +184,16 @@ class _ImportDialogState extends State<ImportDialog> {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SettingsView — tabbed: Subscriptions · Services
+// SettingsView  (3 tabs)
 // ─────────────────────────────────────────────────────────────────────────────
 class SettingsView extends StatelessWidget {
   const SettingsView({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final cs      = Theme.of(context).colorScheme;
     final isDark  = context.isDark;
-    final bg      = isDark ? AppColors.darkBg    : AppColors.lightBg;
-    final textPri = isDark ? AppColors.darkT1    : AppColors.lightT1;
-    final textSec = isDark ? AppColors.darkT2    : AppColors.lightT2;
+    final bg      = isDark ? AppColors.darkBg : AppColors.lightBg;
 
     return DefaultTabController(
       length: 3,
@@ -255,16 +204,16 @@ class SettingsView extends StatelessWidget {
           elevation: 0,
           scrolledUnderElevation: 0,
           leading: IconButton(
-            icon: Icon(Icons.arrow_back_rounded, color: textPri),
+            icon: Icon(Icons.arrow_back_rounded, color: cs.onSurface),
             onPressed: () => Navigator.of(context).pop(),
           ),
-          title: Text('Настройки', style: AppFonts.heading(textPri)),
+          title: Text('Настройки', style: AppFonts.heading(cs.onSurface)),
           bottom: TabBar(
-            indicatorColor: AppColors.violet,
-            labelColor: AppColors.violet,
-            unselectedLabelColor: textSec,
-            labelStyle: AppFonts.bodyMedium(AppColors.violet, size: 13),
-            unselectedLabelStyle: AppFonts.body(textSec, size: 13),
+            indicatorColor: cs.primary,
+            indicatorSize: TabBarIndicatorSize.tab,
+            labelColor: cs.primary,
+            unselectedLabelColor: cs.onSurfaceVariant,
+            dividerColor: Colors.transparent,
             tabs: const [
               Tab(text: 'Подписки'),
               Tab(text: 'Серверы'),
@@ -285,7 +234,7 @@ class SettingsView extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SimpleHomeView — main screen
+// SimpleHomeView  — Material Expressive 3 / Android 17 style
 // ─────────────────────────────────────────────────────────────────────────────
 class SimpleHomeView extends ConsumerStatefulWidget {
   const SimpleHomeView({super.key});
@@ -295,60 +244,65 @@ class SimpleHomeView extends ConsumerStatefulWidget {
 }
 
 class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
 
+  // Pulse ring for active state
   late final AnimationController _pulseCtrl;
-  late final Animation<double>   _pulseAnim;
+  late final Animation<double>   _pulseScale;
+  late final Animation<double>   _pulseFade;
+
+  // Button press micro-interaction
+  late final AnimationController _pressCtrl;
+  late final Animation<double>   _pressScale;
 
   @override
   void initState() {
     super.initState();
     _pulseCtrl = AnimationController(vsync: this, duration: _kPulseDur)
-      ..repeat(reverse: true);
-    _pulseAnim = Tween<double>(begin: 0.4, end: 1.0).animate(
-      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeInOut),
-    );
+      ..repeat(reverse: false);
+    _pulseScale = Tween<double>(begin: 0.85, end: 1.3).animate(
+      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeOut));
+    _pulseFade = Tween<double>(begin: 0.6, end: 0.0).animate(
+      CurvedAnimation(parent: _pulseCtrl, curve: Curves.easeOut));
+
+    _pressCtrl = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 90));
+    _pressScale = Tween<double>(begin: 1.0, end: 0.96).animate(
+      CurvedAnimation(parent: _pressCtrl, curve: Curves.easeOut));
   }
 
   @override
   void dispose() {
     _pulseCtrl.dispose();
+    _pressCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _toggle(bool isOn) async {
-    if (!isOn) {
-      final profileId = ref.read(currentProfileIdProvider);
-      if (profileId == null) {
-        _snack('⚠️ Сначала импортируйте подписку.', error: true);
-        return;
-      }
+    if (!isOn && ref.read(currentProfileIdProvider) == null) {
+      _snack('⚠️ Сначала импортируйте подписку.', error: true);
+      return;
     }
     try {
       await globalState.appController.updateStatus(!isOn);
     } catch (e, st) {
       await CrashLogger.instance.logError(e, st);
       final msg = e.toString();
-      _snack(
-        msg.length > 200 ? '${msg.substring(0, 200)}…' : msg,
-        error: true,
-      );
+      _snack(msg.length > 200 ? '${msg.substring(0, 200)}…' : msg, error: true);
     }
   }
 
   void _snack(String msg, {bool error = false}) {
     if (!mounted) return;
+    final cs = Theme.of(context).colorScheme;
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(SnackBar(
-      content: Text(
-        msg,
-        style: const TextStyle(
-            color: Colors.black87, fontWeight: FontWeight.w500),
-      ),
-      backgroundColor: error ? AppColors.orange : AppColors.lime,
+      content: Text(msg, style: TextStyle(color: cs.onPrimary,
+          fontWeight: FontWeight.w500)),
+      backgroundColor: error ? cs.error : cs.primary,
       duration: _kSnackDur,
       behavior: SnackBarBehavior.floating,
-      shape:
-          RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
     ));
   }
 
@@ -365,23 +319,13 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
   }
 
   Future<void> _runImport(BuildContext ctx, String url) async {
-    ScaffoldMessenger.maybeOf(ctx)?.showSnackBar(const SnackBar(
-      content: Text(
-        'Загружаем подписку…',
-        style: TextStyle(color: Colors.black87),
-      ),
-      backgroundColor: AppColors.lime,
-      behavior: SnackBarBehavior.floating,
-    ));
+    _snack('Загружаем подписку…');
     try {
       await doProfileImport(url: url, ref: ref, context: ctx);
-      _snack('✅ Подписка успешно обновлена!');
+      _snack('✅ Подписка обновлена!');
     } catch (e) {
       final msg = e.toString();
-      _snack(
-        msg.length > 200 ? '${msg.substring(0, 200)}…' : msg,
-        error: true,
-      );
+      _snack(msg.length > 200 ? '${msg.substring(0, 200)}…' : msg, error: true);
     }
   }
 
@@ -389,235 +333,249 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
   Widget build(BuildContext context) {
     final isOn    = ref.watch(runTimeProvider.select((t) => t != null));
     final isReady = ref.watch(initProvider);
+    final cs      = Theme.of(context).colorScheme;
     final isDark  = context.isDark;
 
-    final bg      = isDark ? AppColors.darkBg      : AppColors.lightBg;
-    final surface = isDark ? AppColors.darkSurface : AppColors.lightSurface;
-    final border  = isDark ? AppColors.darkBorder  : AppColors.lightBorder;
-    final textPri = isDark ? AppColors.darkT1      : AppColors.lightT1;
-    final textSec = isDark ? AppColors.darkT2      : AppColors.lightT2;
-    final textTer = isDark ? AppColors.darkT3      : AppColors.lightT3;
-
-    final btnColor  = isOn ? AppColors.violetDark : AppColors.violet;
-    final btnShadow = [
-      BoxShadow(
-        color: (isOn ? AppColors.lime : AppColors.violet)
-            .withOpacity(isOn ? 0.35 : 0.30),
-        blurRadius: 16,
-        spreadRadius: -2,
-        offset: const Offset(0, 4),
-      ),
-    ];
+    // Stop pulse when VPN is off
+    if (isOn && !_pulseCtrl.isAnimating) _pulseCtrl.repeat();
+    if (!isOn && _pulseCtrl.isAnimating) { _pulseCtrl.stop(); _pulseCtrl.reset(); }
 
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: cs.surface,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding:
-              const EdgeInsets.fromLTRB(_kHPad, 0, _kHPad, 24),
+          physics: const BouncingScrollPhysics(),
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
           child: Column(
             children: [
+              const SizedBox(height: 32),
+
+              // ── Top row: logo + settings ──────────────────────────────
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  RichText(
+                    text: TextSpan(children: [
+                      TextSpan(
+                        text: 'Raketa',
+                        style: AppFonts.logo(cs.onSurface)
+                            .copyWith(fontSize: 28),
+                      ),
+                      TextSpan(
+                        text: ' VPN',
+                        style: AppFonts.logo(cs.primary)
+                            .copyWith(fontSize: 28),
+                      ),
+                    ]),
+                  ),
+                  IconButton.filledTonal(
+                    onPressed: () => Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                          builder: (_) => const SettingsView()),
+                    ),
+                    icon: const Icon(Icons.settings_rounded),
+                    style: IconButton.styleFrom(
+                      backgroundColor: cs.primaryContainer,
+                      foregroundColor: cs.onPrimaryContainer,
+                    ),
+                  ),
+                ],
+              ),
+
               const SizedBox(height: 40),
 
-              // ── Hero card ──────────────────────────────────────────────
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(
-                    vertical: _kCardPadV, horizontal: _kCardPadH),
-                decoration: BoxDecoration(
-                  color: surface,
-                  borderRadius: BorderRadius.circular(_kRadius),
-                  border: Border.all(color: border),
-                ),
-                child: Column(
+              // ── Hero: animated VPN orb ────────────────────────────────
+              SizedBox(
+                width: 220,
+                height: 220,
+                child: Stack(
+                  alignment: Alignment.center,
                   children: [
-                    AnimatedContainer(
-                      duration: _kToggleDur,
-                      width: _kLogoBoxSize,
-                      height: _kLogoBoxSize,
-                      decoration: BoxDecoration(
-                        color: isOn
-                            ? AppColors.lime.withOpacity(0.15)
-                            : AppColors.violet.withOpacity(0.10),
-                        borderRadius:
-                            BorderRadius.circular(_kLogoBoxRadius),
-                        border: Border.all(
-                          color: isOn
-                              ? AppColors.lime.withOpacity(0.40)
-                              : AppColors.violet.withOpacity(0.25),
+                    // Outer pulse ring (only when active)
+                    if (isOn)
+                      AnimatedBuilder(
+                        animation: _pulseCtrl,
+                        builder: (_, __) => Transform.scale(
+                          scale: _pulseScale.value,
+                          child: Container(
+                            width: 180,
+                            height: 180,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: cs.primary.withValues(
+                                    alpha: _pulseFade.value),
+                                width: 2,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                      child: const Center(
-                        child: Text('🚀',
-                            style: TextStyle(fontSize: 32)),
+
+                    // Middle ring
+                    AnimatedContainer(
+                      duration: _kToggleDur,
+                      curve: _kSpringCurve,
+                      width: 160,
+                      height: 160,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isOn
+                            ? cs.primaryContainer
+                            : cs.surfaceContainerHighest,
                       ),
                     ),
-                    const SizedBox(height: 14),
-                    Text(
-                      'Raketa',
-                      style:
-                          AppFonts.logo(textPri).copyWith(fontSize: 26),
-                    ),
-                    const SizedBox(height: 4),
-                    AnimatedSwitcher(
-                      duration: _kToggleDur,
-                      child: Text(
-                        isOn
-                            ? 'Интернет сейчас свободнее'
-                            : 'Запустите VPN',
-                        key: ValueKey<bool>(isOn),
-                        style: AppFonts.body(textSec, size: 13),
+
+                    // Inner button
+                    GestureDetector(
+                      onTapDown: isReady ? (_) => _pressCtrl.forward() : null,
+                      onTapUp: isReady ? (_) async {
+                        await _pressCtrl.reverse();
+                        await _toggle(isOn);
+                      } : null,
+                      onTapCancel: isReady ? () => _pressCtrl.reverse() : null,
+                      child: AnimatedBuilder(
+                        animation: _pressScale,
+                        builder: (_, child) => Transform.scale(
+                          scale: _pressScale.value,
+                          child: child,
+                        ),
+                        child: AnimatedContainer(
+                          duration: _kToggleDur,
+                          curve: _kSpringCurve,
+                          width: 120,
+                          height: 120,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isReady
+                                ? (isOn ? cs.primary : cs.primaryContainer)
+                                : cs.surfaceContainerHighest,
+                            boxShadow: isReady && isOn
+                                ? [
+                                    BoxShadow(
+                                      color: cs.primary.withValues(alpha: 0.45),
+                                      blurRadius: 32,
+                                      spreadRadius: 0,
+                                    )
+                                  ]
+                                : null,
+                          ),
+                          child: Center(
+                            child: AnimatedSwitcher(
+                              duration: _kToggleDur,
+                              child: isReady
+                                  ? Icon(
+                                      isOn
+                                          ? Icons.power_settings_new_rounded
+                                          : Icons.power_settings_new_rounded,
+                                      key: ValueKey<bool>(isOn),
+                                      size: 44,
+                                      color: isOn
+                                          ? cs.onPrimary
+                                          : cs.onPrimaryContainer,
+                                    )
+                                  : SizedBox(
+                                      key: const ValueKey<String>('loading'),
+                                      width: 28,
+                                      height: 28,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2.5,
+                                        color: cs.onSurfaceVariant,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 28),
 
-              // ── VPN status row with pulse ──────────────────────────────
+              // ── Status chip ───────────────────────────────────────────
               AnimatedContainer(
                 duration: _kToggleDur,
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
+                curve: _kSpringCurve,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 10),
                 decoration: BoxDecoration(
                   color: isOn
-                      ? AppColors.lime.withOpacity(0.08)
-                      : surface,
-                  borderRadius: BorderRadius.circular(_kRadiusSm),
-                  border: Border.all(
-                    color: isOn
-                        ? AppColors.lime.withOpacity(0.30)
-                        : border,
-                  ),
+                      ? cs.primaryContainer
+                      : cs.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(100),
                 ),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (isOn)
-                      AnimatedBuilder(
-                        animation: _pulseAnim,
-                        builder: (_, __) => Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: AppColors.limeText
-                                .withOpacity(_pulseAnim.value),
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.lime.withOpacity(
-                                    _pulseAnim.value * 0.6),
-                                blurRadius: 6,
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                    else
-                      Container(
-                        width: 10,
-                        height: 10,
-                        decoration: BoxDecoration(
-                            color: textTer, shape: BoxShape.circle),
+                    // Dot indicator
+                    AnimatedContainer(
+                      duration: _kToggleDur,
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isOn
+                            ? cs.primary
+                            : cs.onSurfaceVariant,
                       ),
-                    const SizedBox(width: 10),
+                    ),
+                    const SizedBox(width: 8),
                     AnimatedDefaultTextStyle(
                       duration: _kToggleDur,
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color:
-                            isOn ? AppColors.limeText : textSec,
+                        color: isOn
+                            ? cs.onPrimaryContainer
+                            : cs.onSurfaceVariant,
                       ),
                       child: Text(
-                          isOn ? 'VPN активен' : 'VPN отключён'),
-                    ),
-                    const Spacer(),
-                    if (!isReady)
-                      SizedBox(
-                        width: 14,
-                        height: 14,
-                        child: CircularProgressIndicator(
-                            strokeWidth: 1.5, color: textTer),
+                        isOn
+                            ? 'Подключено'
+                            : (isReady ? 'Нажмите для подключения' : 'Инициализация…'),
                       ),
+                    ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 12),
+              const SizedBox(height: 48),
 
-              // ── Toggle button ──────────────────────────────────────────
-              _PressableButton(
-                enabled: isReady,
-                onTap: () => _toggle(isOn),
-                child: AnimatedContainer(
-                  duration: _kToggleDur,
-                  width: double.infinity,
-                  height: _kBtnHeight,
-                  decoration: BoxDecoration(
-                    color: isReady ? btnColor : textTer,
-                    borderRadius: BorderRadius.circular(_kRadiusBtn),
-                    boxShadow: isReady ? btnShadow : const [],
-                  ),
-                  child: Center(
-                    child: AnimatedSwitcher(
-                      duration: _kToggleDur,
-                      child: Text(
-                        isReady
-                            ? (isOn ? 'Отключить' : 'Включить')
-                            : 'Инициализация…',
-                        key: ValueKey<String>(
-                          isReady
-                              ? (isOn ? 'on' : 'off')
-                              : 'init',
-                        ),
-                        style: AppFonts.btnPrimary(Colors.white),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // ── Action cards ───────────────────────────────────────────
+              // ── Action cards (M3 ElevatedCard style) ─────────────────
               Row(
                 children: [
                   Expanded(
-                    child: _ActionCard(
+                    child: _M3ActionCard(
                       icon: Icons.add_link_rounded,
                       label: 'Импорт',
-                      color: AppColors.lime,
-                      surface: surface,
-                      border: border,
-                      textPri: textPri,
+                      sublabel: 'Добавить подписку',
                       onTap: () => _showImport(context),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _ActionCard(
+                    child: _M3ActionCard(
                       icon: Icons.tune_rounded,
                       label: 'Настройки',
-                      color: AppColors.lime,
-                      surface: surface,
-                      border: border,
-                      textPri: textPri,
+                      sublabel: 'Серверы и сервисы',
                       onTap: () => Navigator.of(context).push(
                         MaterialPageRoute<void>(
-                          builder: (_) => const SettingsView(),
-                        ),
+                            builder: (_) => const SettingsView()),
                       ),
                     ),
                   ),
                 ],
               ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 40),
+
+              // ── Footer ────────────────────────────────────────────────
               Text(
-                'Raketa · from pavel with love ♥',
-                style: AppFonts.caption(textTer),
+                'Raketa · свободный интернет',
+                style: AppFonts.caption(cs.onSurfaceVariant),
+                textAlign: TextAlign.center,
               ),
             ],
           ),
@@ -628,24 +586,26 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _PressableButton — scale-on-press micro-interaction
+// _M3ActionCard  — Material 3 Expressive card with spring press
 // ─────────────────────────────────────────────────────────────────────────────
-class _PressableButton extends StatefulWidget {
-  final Widget child;
-  final VoidCallback? onTap;
-  final bool enabled;
-
-  const _PressableButton({
-    required this.child,
+class _M3ActionCard extends StatefulWidget {
+  const _M3ActionCard({
+    required this.icon,
+    required this.label,
+    required this.sublabel,
     required this.onTap,
-    this.enabled = true,
   });
 
+  final IconData    icon;
+  final String      label;
+  final String      sublabel;
+  final VoidCallback onTap;
+
   @override
-  State<_PressableButton> createState() => _PressableButtonState();
+  State<_M3ActionCard> createState() => _M3ActionCardState();
 }
 
-class _PressableButtonState extends State<_PressableButton>
+class _M3ActionCardState extends State<_M3ActionCard>
     with SingleTickerProviderStateMixin {
 
   late final AnimationController _ctrl;
@@ -655,81 +615,51 @@ class _PressableButtonState extends State<_PressableButton>
   void initState() {
     super.initState();
     _ctrl = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 100),
-    );
-    _scale = Tween<double>(begin: 1.0, end: 0.97).animate(
-      CurvedAnimation(parent: _ctrl, curve: Curves.easeOut),
-    );
+        vsync: this, duration: const Duration(milliseconds: 80));
+    _scale = Tween<double>(begin: 1.0, end: 0.95).animate(
+      CurvedAnimation(parent: _ctrl, curve: Curves.easeOut));
   }
 
   @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
-  }
+  void dispose() { _ctrl.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
     return GestureDetector(
-      onTap: widget.enabled ? widget.onTap : null,
-      onTapDown: widget.enabled ? (_) => _ctrl.forward() : null,
-      onTapUp: widget.enabled ? (_) => _ctrl.reverse() : null,
-      onTapCancel: widget.enabled ? () => _ctrl.reverse() : null,
+      onTapDown: (_) => _ctrl.forward(),
+      onTapUp: (_) async { await _ctrl.reverse(); widget.onTap(); },
+      onTapCancel: () => _ctrl.reverse(),
       child: AnimatedBuilder(
         animation: _scale,
         builder: (_, child) =>
             Transform.scale(scale: _scale.value, child: child),
-        child: widget.child,
-      ),
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// _ActionCard — tappable tile with ripple
-// ─────────────────────────────────────────────────────────────────────────────
-class _ActionCard extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final Color color;
-  final Color surface;
-  final Color border;
-  final Color textPri;
-  final VoidCallback onTap;
-
-  const _ActionCard({
-    required this.icon,
-    required this.label,
-    required this.color,
-    required this.surface,
-    required this.border,
-    required this.textPri,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: surface,
-      borderRadius: BorderRadius.circular(_kRadiusSm),
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(_kRadiusSm),
-        splashColor: AppColors.violet.withOpacity(0.08),
-        highlightColor: AppColors.violet.withOpacity(0.04),
         child: Container(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(_kRadiusSm),
-            border: Border.all(color: border),
+            color: cs.surfaceContainerHighest,
+            borderRadius: BorderRadius.circular(24),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Icon(icon, color: color, size: 28),
-              const SizedBox(height: 12),
-              Text(label, style: AppFonts.bodyMedium(textPri)),
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: cs.primaryContainer,
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(widget.icon,
+                    color: cs.onPrimaryContainer, size: 22),
+              ),
+              const SizedBox(height: 16),
+              Text(widget.label,
+                  style: AppFonts.bodyMedium(cs.onSurface)),
+              const SizedBox(height: 2),
+              Text(widget.sublabel,
+                  style: AppFonts.body(cs.onSurfaceVariant, size: 12)),
             ],
           ),
         ),
