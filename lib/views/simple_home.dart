@@ -29,7 +29,12 @@ Future<void> doProfileImport({
   required String url,
   required WidgetRef ref,
   required BuildContext context,
+  int? _depth,
 }) async {
+  // Prevent infinite redirect loops
+  if ((_depth ?? 0) > 3) {
+    throw 'Слишком много перенаправлений. Проверьте ссылку.';
+  }
   if (!globalState.appState.isInit) {
     bool ready = false;
     for (int i = 0; i < 40; i++) {
@@ -64,14 +69,37 @@ Future<void> doProfileImport({
     if (rawBytes == null || rawBytes.isEmpty) throw firstError ?? 'Пустой ответ сервера.';
 
     final rawText = utf8.decode(rawBytes, allowMalformed: true).trim();
-    if (rawText.toLowerCase().startsWith('<!doctype') ||
-        rawText.toLowerCase().startsWith('<html')) {
-      throw 'Сервер вернул HTML вместо подписки. Проверьте ссылку.';
+    final lower = rawText.toLowerCase();
+    final isHtml = lower.startsWith('<!doctype') ||
+        lower.startsWith('<html') ||
+        (lower.contains('<head') && lower.contains('<body'));
+
+    if (isHtml) {
+      // HTML page — try to extract subscription URL or data from it
+      final parsed = parseHtmlSubscriptionPage(rawText, pageUrl: url);
+      if (parsed.failed) {
+        throw parsed.errorReason ?? 'Сервер вернул HTML без данных подписки.';
+      }
+      if (parsed.hasUrl) {
+        // Found a redirect URL — recurse once (depth-limited)
+        return doProfileImport(
+          url: parsed.subscriptionUrl!,
+          ref: ref,
+          context: context,
+          _depth: (_depth ?? 0) + 1,
+        );
+      }
+      // Has inline subscription data
+      try {
+        final yaml = convertSubscriptionToClashYaml(parsed.subscriptionData!);
+        profile = await base.saveFileWithString(yaml);
+      } catch (e) { throw 'Ошибка обработки подписки из HTML: $e'; }
+    } else {
+      try {
+        final yaml = convertSubscriptionToClashYaml(rawText);
+        profile = await base.saveFileWithString(yaml);
+      } catch (e) { throw 'Ошибка обработки подписки: $e'; }
     }
-    try {
-      final yaml = convertSubscriptionToClashYaml(rawText);
-      profile = await base.saveFileWithString(yaml);
-    } catch (e) { throw 'Ошибка обработки подписки: $e'; }
   }
 
   ref.read(profilesProvider.notifier).setProfile(profile!);
