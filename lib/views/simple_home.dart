@@ -350,36 +350,22 @@ class _SimpleHomeViewState extends ConsumerState<SimpleHomeView>
             children: [
               const SizedBox(height: 32),
 
-              // ── Top row: logo + settings ──────────────────────────────
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  RichText(
-                    text: TextSpan(children: [
-                      TextSpan(
-                        text: 'Raketa',
-                        style: AppFonts.logo(cs.onSurface)
-                            .copyWith(fontSize: 28),
-                      ),
-                      TextSpan(
-                        text: ' VPN',
-                        style: AppFonts.logo(cs.primary)
-                            .copyWith(fontSize: 28),
-                      ),
-                    ]),
-                  ),
-                  IconButton.filledTonal(
-                    onPressed: () => Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                          builder: (_) => const SettingsView()),
+              // ── Logo ──────────────────────────────────────────────
+              Center(
+                child: RichText(
+                  text: TextSpan(children: [
+                    TextSpan(
+                      text: 'Raketa',
+                      style: AppFonts.logo(cs.onSurface)
+                          .copyWith(fontSize: 28),
                     ),
-                    icon: const Icon(Icons.settings_rounded),
-                    style: IconButton.styleFrom(
-                      backgroundColor: cs.primaryContainer,
-                      foregroundColor: cs.onPrimaryContainer,
+                    TextSpan(
+                      text: ' VPN',
+                      style: AppFonts.logo(cs.primary)
+                          .copyWith(fontSize: 28),
                     ),
-                  ),
-                ],
+                  ]),
+                ),
               ),
 
               const SizedBox(height: 40),
