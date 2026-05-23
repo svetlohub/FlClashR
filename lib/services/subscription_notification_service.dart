@@ -20,23 +20,18 @@ class SubscriptionNotificationService {
   
   /// Check subscription and show notification if needed
   static Future<void> checkAndNotify(Profile profile) async {
-    commonPrint.log('[SubscriptionNotification] checkAndNotify called for profile: ${profile.label}');
     
     if (!Platform.isAndroid) {
-      commonPrint.log('[SubscriptionNotification] Not Android, skipping');
       return;
     }
     
     final subscriptionInfo = profile.subscriptionInfo;
     if (subscriptionInfo == null) {
-      commonPrint.log('[SubscriptionNotification] No subscription info, skipping');
       return;
     }
     
     final expire = subscriptionInfo.expire;
-    commonPrint.log('[SubscriptionNotification] expire timestamp: $expire');
     if (expire == 0) {
-      commonPrint.log('[SubscriptionNotification] expire is 0, skipping');
       return;
     }
     
@@ -46,7 +41,6 @@ class SubscriptionNotificationService {
     final isExpired = expireDate.isBefore(now);
     final daysUntilExpire = expireDate.difference(now).inDays;
     
-    commonPrint.log('[SubscriptionNotification] expireDate: $expireDate, now: $now, isExpired: $isExpired, daysUntilExpire: $daysUntilExpire');
     
     // Determine notification threshold
     // -1 means expired, 0 means expires today (but not yet expired), 1+ means days left
@@ -59,14 +53,11 @@ class SubscriptionNotificationService {
       notificationThreshold = daysUntilExpire;
     }
     
-    commonPrint.log('[SubscriptionNotification] notificationThreshold: $notificationThreshold');
     
     // Check if we should show notification for this threshold
     if (notificationDays.contains(notificationThreshold)) {
-      commonPrint.log('[SubscriptionNotification] Threshold match! Showing notification');
       await _showNotificationIfNeeded(profile, notificationThreshold);
     } else {
-      commonPrint.log('[SubscriptionNotification] Threshold ($notificationThreshold) not in notification list $notificationDays');
     }
   }
   
@@ -81,17 +72,14 @@ class SubscriptionNotificationService {
     final lastNotifiedExpire = prefs.getInt(key);
     final currentExpire = profile.subscriptionInfo?.expire ?? 0;
     
-    commonPrint.log('[SubscriptionNotification] key: $key, lastNotifiedExpire: $lastNotifiedExpire, currentExpire: $currentExpire');
     
     // If we already notified for this expire timestamp and threshold, skip
     if (lastNotifiedExpire == currentExpire) {
-      commonPrint.log('[SubscriptionNotification] Already notified for this threshold, skipping');
       return;
     }
     
     // Get support URL for "Renew" button (optional)
     final supportUrl = profile.providerHeaders['support-url'] ?? '';
-    commonPrint.log('[SubscriptionNotification] supportUrl: $supportUrl');
     
     // Get title from flclashx-servicename header or fallback to profile label
     String title = profile.label ?? profile.id;
@@ -115,8 +103,6 @@ class SubscriptionNotificationService {
     }
     final actionLabel = appLocalizations.renew;
     
-    commonPrint.log('[SubscriptionNotification] Calling vpn?.showSubscriptionNotification...');
-    commonPrint.log('[SubscriptionNotification] vpn is null: ${vpn == null}');
     
     // Show notification (action button only if supportUrl is available)
     await vpn?.showSubscriptionNotification(
@@ -126,7 +112,6 @@ class SubscriptionNotificationService {
       actionUrl: supportUrl,
     );
     
-    commonPrint.log('[SubscriptionNotification] Notification sent, marking as notified');
     
     // Mark as notified
     await prefs.setInt(key, currentExpire);
