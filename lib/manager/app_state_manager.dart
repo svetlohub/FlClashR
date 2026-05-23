@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:flclashx/common/common.dart';
 import 'package:flclashx/providers/providers.dart';
 import 'package:flclashx/state.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -109,23 +108,5 @@ class AppEnvManager extends StatelessWidget {
   final Widget child;
 
   @override
-  Widget build(BuildContext context) {
-    if (kDebugMode) {
-      if (globalState.isPre) {
-        return Banner(
-          message: 'DEBUG',
-          location: BannerLocation.topEnd,
-          child: child,
-        );
-      }
-    }
-    if (globalState.isPre) {
-      return Banner(
-        message: 'PRE',
-        location: BannerLocation.topEnd,
-        child: child,
-      );
-    }
-    return child;
-  }
+  Widget build(BuildContext context) => child;
 }
