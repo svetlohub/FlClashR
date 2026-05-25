@@ -503,14 +503,17 @@ String _yamlEscape(String s) =>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// HTML subscription page parser
-//
-// Many providers wrap the real subscription URL inside an HTML page
-// (redirect page, dashboard, Cloudflare landing, etc.).
-// This parser tries to extract the real subscription URL or data from HTML.
+
+
 // ─────────────────────────────────────────────────────────────────────────────
 
-/// Result of parsing an HTML page.
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HTML Subscription Page Parser
+// Extracts subscription URLs or data from HTML wrapper pages.
+// Strategy: wall detection → inline data → meta-refresh → JS redirect → links → base64
+// ─────────────────────────────────────────────────────────────────────────────
+
 class HtmlParseResult {
   const HtmlParseResult._({
     this.subscriptionUrl,
@@ -518,13 +521,13 @@ class HtmlParseResult {
     this.errorReason,
   });
 
-  /// A subscription URL found in the page — caller should fetch it.
+  /// A redirect URL found — caller must fetch it.
   final String? subscriptionUrl;
 
-  /// Subscription content found directly in the page — caller can use as-is.
+  /// Subscription content found inline — use directly.
   final String? subscriptionData;
 
-  /// Human-readable reason if we couldn't extract anything useful.
+  /// Human-readable failure reason.
   final String? errorReason;
 
   bool get hasUrl  => subscriptionUrl != null;
@@ -532,102 +535,72 @@ class HtmlParseResult {
   bool get failed  => subscriptionUrl == null && subscriptionData == null;
 }
 
-/// Parses an HTML page body and tries to find subscription content.
-/// Returns a [HtmlParseResult] — check [HtmlParseResult.hasUrl] /
-/// [HtmlParseResult.hasData] before using.
+/// Entry point: parse an HTML page and extract subscription content.
 HtmlParseResult parseHtmlSubscriptionPage(String html, {String? pageUrl}) {
-  // ── 1. Detect known wall pages ──────────────────────────────────────────
-  final reason = _detectWallPage(html);
-  if (reason != null) {
-    return HtmlParseResult._(errorReason: reason);
-  }
+  final wall = _detectWall(html);
+  if (wall != null) return HtmlParseResult._(errorReason: wall);
 
-  // ── 2. Look for subscription data directly in <pre>/<textarea>/<code> ───
-  final inlineData = _extractInlineData(html);
-  if (inlineData != null) {
-    return HtmlParseResult._(subscriptionData: inlineData);
-  }
+  final inline = _inlineData(html);
+  if (inline != null) return HtmlParseResult._(subscriptionData: inline);
 
-  // ── 3. Follow <meta http-equiv="refresh"> ───────────────────────────────
-  final metaRefreshUrl = _extractMetaRefreshUrl(html, base: pageUrl);
-  if (metaRefreshUrl != null) {
-    return HtmlParseResult._(subscriptionUrl: metaRefreshUrl);
-  }
+  final meta = _metaRefreshUrl(html, base: pageUrl);
+  if (meta != null) return HtmlParseResult._(subscriptionUrl: meta);
 
-  // ── 4. JS redirect: window.location / location.href / location.replace ──
-  final jsRedirectUrl = _extractJsRedirectUrl(html, base: pageUrl);
-  if (jsRedirectUrl != null) {
-    return HtmlParseResult._(subscriptionUrl: jsRedirectUrl);
-  }
+  final js = _jsRedirectUrl(html, base: pageUrl);
+  if (js != null) return HtmlParseResult._(subscriptionUrl: js);
 
-  // ── 5. Find <a href> links that look like subscription URLs ─────────────
-  final linkUrl = _extractSubscriptionLink(html, base: pageUrl);
-  if (linkUrl != null) {
-    return HtmlParseResult._(subscriptionUrl: linkUrl);
-  }
+  final link = _subscriptionLink(html, base: pageUrl);
+  if (link != null) return HtmlParseResult._(subscriptionUrl: link);
 
-  // ── 6. Find raw base64 blobs in the HTML body ────────────────────────────
-  final base64Data = _extractBase64Blob(html);
-  if (base64Data != null) {
-    return HtmlParseResult._(subscriptionData: base64Data);
-  }
+  final b64 = _base64Blob(html);
+  if (b64 != null) return HtmlParseResult._(subscriptionData: b64);
 
   return HtmlParseResult._(
-    errorReason: 'Сервер вернул HTML-страницу без распознаваемой подписки. '
-        'Попробуйте скопировать ссылку вручную.',
+    errorReason: "Сервер вернул HTML без распознаваемой подписки. "
+        "Скопируйте прямую ссылку вручную.",
   );
 }
 
-// ─── Wall page detection ──────────────────────────────────────────────────────
-String? _detectWallPage(String html) {
-  final lower = html.toLowerCase();
-
-  // Cloudflare challenge
-  if (lower.contains('checking your browser') ||
-      lower.contains('cloudflare') && lower.contains('challenge') ||
-      lower.contains('cf-browser-verification') ||
-      lower.contains('just a moment')) {
-    return 'Страница защищена Cloudflare. Откройте ссылку в браузере, '
-        'пройдите проверку, затем скопируйте прямую ссылку на подписку.';
+// ── Wall page detection ───────────────────────────────────────────────────────
+String? _detectWall(String html) {
+  final l = html.toLowerCase();
+  if (l.contains("checking your browser") ||
+      l.contains("cf-browser-verification") ||
+      l.contains("just a moment") ||
+      (l.contains("cloudflare") && l.contains("challenge"))) {
+    return "Cloudflare защищает эту страницу. Откройте ссылку в браузере "
+        "и скопируйте прямую ссылку на подписку.";
   }
-
-  // Login / auth wall
-  if ((lower.contains('login') || lower.contains('sign in') ||
-          lower.contains('войти') || lower.contains('авторизация')) &&
-      (lower.contains('<form') || lower.contains('password'))) {
-    return 'Страница требует авторизации. Войдите в личный кабинет '
-        'в браузере и скопируйте прямую ссылку на подписку.';
+  if ((l.contains("login") || l.contains("sign in") ||
+          l.contains("войти") || l.contains("авторизация")) &&
+      (l.contains("<form") || l.contains("password"))) {
+    return "Страница требует авторизации. Войдите в браузере "
+        "и скопируйте прямую ссылку на подписку.";
   }
-
-  // 403 / 404 / 429 pages
-  if (lower.contains('403 forbidden') ||
-      lower.contains('404 not found') ||
-      lower.contains('429 too many')) {
-    return 'Сервер вернул страницу с ошибкой доступа (403/404/429). '
-        'Проверьте ссылку в браузере.';
+  if (l.contains("403 forbidden") ||
+      l.contains("404 not found") ||
+      l.contains("429 too many")) {
+    return "Сервер вернул ошибку (403/404/429). Проверьте ссылку.";
   }
-
-  // Captcha
-  if (lower.contains('captcha') || lower.contains('recaptcha')) {
-    return 'Сервер требует прохождения капчи. Откройте ссылку в браузере.';
+  if (l.contains("captcha") || l.contains("recaptcha")) {
+    return "Сервер требует капчу. Откройте ссылку в браузере.";
   }
-
   return null;
 }
 
-// ─── <pre> / <textarea> / <code> content ─────────────────────────────────────
-String? _extractInlineData(String html) {
-  // Try <pre>, <textarea>, <code> blocks — subscription data often placed here
-  for (final tag in ['pre', 'textarea', 'code']) {
-    final re = RegExp('<$tag[^>]*>([\\s\\S]+?)</$tag>',
+// ── Inline data in <pre>/<textarea>/<code> ────────────────────────────────────
+String? _inlineData(String html) {
+  for (final tag in ["pre", "textarea", "code"]) {
+    final re = RegExp("<$tag[^>]*>([\\s\\S]+?)</$tag>",
         caseSensitive: false);
     for (final m in re.allMatches(html)) {
-      final inner = _stripTags(m.group(1) ?? '').trim();
+      final inner = (m.group(1) ?? "")
+          .replaceAll(RegExp("<[^>]+>"), "")
+          .trim();
       if (inner.length < 20) continue;
-      // Check if it looks like subscription content
       if (_isProxyUri(inner) ||
           _looksLikeClashYaml(inner) ||
-          _couldBeBase64Subscription(inner)) {
+          _looksLikeBase64Sub(inner)) {
         return inner;
       }
     }
@@ -635,42 +608,35 @@ String? _extractInlineData(String html) {
   return null;
 }
 
-// ─── <meta http-equiv="refresh" content="0; url=..."> ────────────────────────
-String? _extractMetaRefreshUrl(String html, {String? base}) {
+// ── <meta http-equiv="refresh" content="N; url=..."> ─────────────────────────
+String? _metaRefreshUrl(String html, {String? base}) {
+  // Avoid single-quote in regex by matching [^;\s>]+ for url value
+  // then stripping any surrounding quotes with replaceAll
   final re = RegExp(
-    r'<meta[^>]+http-equiv=["\']refresh["\'][^>]+content=["\'][^"\']*url=([^"\';\s>]+)',
-    caseSensitive: false,
-  );
+      r"<meta[^>]+content\s*=\s*[^>]*url\s*=\s*([^\s;>]+)",
+      caseSensitive: false);
   final m = re.firstMatch(html);
-  if (m != null) {
-    return _resolveUrl(m.group(1)!.trim(), base);
-  }
-  // Also try: content="0;url=..."
-  final re2 = RegExp(
-    r'content=["\'][^"\']*;\s*url=([^"\';\s>]+)',
-    caseSensitive: false,
-  );
-  final m2 = re2.firstMatch(html);
-  if (m2 != null) return _resolveUrl(m2.group(1)!.trim(), base);
-  return null;
+  if (m == null) return null;
+  final raw = m.group(1)!.replaceAll('"', "").replaceAll("\x27", "");
+  return _resolveUrl(raw.trim(), base);
 }
 
-// ─── JS redirects ─────────────────────────────────────────────────────────────
-String? _extractJsRedirectUrl(String html, {String? base}) {
-  // window.location = "..."
-  // window.location.href = "..."
-  // location.replace("...")
-  // location.href = "..."
+// ── JS redirects: window.location / location.href / location.replace ──────────
+String? _jsRedirectUrl(String html, {String? base}) {
+  // Use double-quoted patterns only
   final patterns = [
-    RegExp(r'window\.location(?:\.href)?\s*=\s*["\']([^"\']+)["\']'),
-    RegExp(r'location\.replace\s*\(\s*["\']([^"\']+)["\']'),
-    RegExp(r'location\.href\s*=\s*["\']([^"\']+)["\']'),
+    RegExp(r'window\.location(?:\.href)?\s*=\s*"([^"]+)"'),
+    RegExp(r'location\.replace\s*\(\s*"([^"]+)"'),
+    RegExp(r'location\.href\s*=\s*"([^"]+)"'),
+    // single-quoted variants via explicit char
+    RegExp("window[.]location(?:[.]href)?\s*=\s*'([^']+)'"),
+    RegExp("location[.]replace\s*[(]\s*'([^']+)'"),
   ];
   for (final re in patterns) {
     final m = re.firstMatch(html);
     if (m != null) {
-      final url = m.group(1)!.trim();
-      if (url.startsWith('http') || url.startsWith('/')) {
+      final url = m.group(1)!;
+      if (url.startsWith("http") || url.startsWith("/")) {
         return _resolveUrl(url, base);
       }
     }
@@ -678,46 +644,48 @@ String? _extractJsRedirectUrl(String html, {String? base}) {
   return null;
 }
 
-// ─── <a href> links ───────────────────────────────────────────────────────────
-String? _extractSubscriptionLink(String html, {String? base}) {
-  final re = RegExp(r'href=["\']([^"\']+)["\']', caseSensitive: false);
-  
-  // Priority 1: links with subscription-related keywords in URL or surrounding text
-  final subscriptionKeywords = [
-    'sub', 'subscribe', 'clash', 'v2ray', 'vmess', 'vless',
-    'trojan', 'proxy', 'config', 'yaml', 'link', 'token',
+// ── <a href> links ────────────────────────────────────────────────────────────
+String? _subscriptionLink(String html, {String? base}) {
+  const keywords = [
+    "sub", "subscribe", "clash", "vmess", "vless",
+    "trojan", "proxy", "config", "yaml", "token", "link",
   ];
+  // Match href="..." and href='...' separately to avoid mixed-quote raw strings
+  final reDouble = RegExp(r'href="([^"]+)"', caseSensitive: false);
+  final reSingle = RegExp("href='([^']+)'",  caseSensitive: false);
 
-  final candidates = <String>[];
-  for (final m in re.allMatches(html)) {
+  final high = <String>[];
+  final low  = <String>[];
+
+  for (final m in [...reDouble.allMatches(html), ...reSingle.allMatches(html)]) {
     final href = m.group(1)!.trim();
-    if (!href.startsWith('http') && !href.startsWith('/')) continue;
-    if (href.contains('#') && !href.contains('?')) continue; // skip anchors
-    final lower = href.toLowerCase();
-    if (subscriptionKeywords.any((kw) => lower.contains(kw))) {
-      candidates.insert(0, href); // high priority
-    } else if (href.startsWith('http') && !_isLikelyUiLink(href)) {
-      candidates.add(href); // lower priority
+    if (!href.startsWith("http") && !href.startsWith("/")) continue;
+    final l = href.toLowerCase();
+    if (l.contains(".css") || l.contains(".js") ||
+        l.contains("login") || l.contains("logout") ||
+        l.contains("favicon")) continue;
+    if (keywords.any((k) => l.contains(k))) {
+      high.add(href);
+    } else {
+      low.add(href);
     }
   }
 
-  if (candidates.isNotEmpty) {
-    return _resolveUrl(candidates.first, base);
-  }
+  final all = [...high, ...low];
+  if (all.isNotEmpty) return _resolveUrl(all.first, base);
   return null;
 }
 
-// ─── Raw base64 blob in HTML ──────────────────────────────────────────────────
-String? _extractBase64Blob(String html) {
-  // Look for long base64 strings (>100 chars) that decode to subscription data
-  final re = RegExp(r'[A-Za-z0-9+/=]{100,}');
+// ── Long base64 blobs embedded in HTML ───────────────────────────────────────
+String? _base64Blob(String html) {
+  final re = RegExp(r"[A-Za-z0-9+/=]{100,}");
   for (final m in re.allMatches(html)) {
-    final candidate = m.group(0)!;
+    final s = m.group(0)!;
     try {
-      final padded = candidate.padRight(
-          (candidate.length + 3) ~/ 4 * 4, '=');
+      final padded = s.padRight((s.length + 3) ~/ 4 * 4, "=");
       final decoded = utf8.decode(base64Decode(padded), allowMalformed: true);
-      if (_isProxyUri(decoded) || _looksLikeClashYaml(decoded) ||
+      if (_isProxyUri(decoded) ||
+          _looksLikeClashYaml(decoded) ||
           _parseProxyList(decoded).isNotEmpty) {
         return decoded;
       }
@@ -726,43 +694,26 @@ String? _extractBase64Blob(String html) {
   return null;
 }
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-bool _couldBeBase64Subscription(String s) {
-  final clean = s.replaceAll(RegExp(r'\s'), '');
-  if (clean.length < 50) return false;
-  // Base64 charset only
-  return RegExp(r'^[A-Za-z0-9+/=]+$').hasMatch(clean);
+bool _looksLikeBase64Sub(String s) {
+  final clean = s.replaceAll(RegExp(r"\s"), "");
+  return clean.length >= 50 &&
+      RegExp(r"^[A-Za-z0-9+/=]+$").hasMatch(clean);
 }
 
-bool _isLikelyUiLink(String url) {
-  final lower = url.toLowerCase();
-  return lower.contains('css') ||
-      lower.contains('.js') ||
-      lower.contains('font') ||
-      lower.contains('image') ||
-      lower.contains('favicon') ||
-      lower.contains('login') ||
-      lower.contains('logout') ||
-      lower.contains('register');
-}
-
-String _stripTags(String html) =>
-    html.replaceAll(RegExp(r'<[^>]+>'), '').trim();
-
-/// Resolves a potentially relative URL against a base URL.
+/// Resolves a relative URL against an optional base URL.
 String _resolveUrl(String url, String? base) {
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
   if (base == null) return url;
   try {
-    final baseUri = Uri.parse(base);
-    if (url.startsWith('/')) {
-      return '${baseUri.scheme}://${baseUri.host}$url';
+    final b = Uri.parse(base);
+    if (url.startsWith("/")) {
+      return b.scheme + "://" + b.host + url;
     }
-    // Relative path
-    final segments = List<String>.from(baseUri.pathSegments);
-    if (segments.isNotEmpty) segments.removeLast();
-    return '${baseUri.scheme}://${baseUri.host}/${segments.join('/')}/$url';
+    final segs = List<String>.from(b.pathSegments);
+    if (segs.isNotEmpty) segs.removeLast();
+    return b.scheme + "://" + b.host + "/" + segs.join("/") + "/" + url;
   } catch (_) {
     return url;
   }
