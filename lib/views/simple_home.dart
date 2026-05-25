@@ -29,10 +29,10 @@ Future<void> doProfileImport({
   required String url,
   required WidgetRef ref,
   required BuildContext context,
-  int? _depth,
+  int? depth,
 }) async {
   // Prevent infinite redirect loops
-  if ((_depth ?? 0) > 3) {
+  if ((depth ?? 0) > 3) {
     throw 'Слишком много перенаправлений. Проверьте ссылку.';
   }
   if (!globalState.appState.isInit) {
@@ -86,7 +86,7 @@ Future<void> doProfileImport({
           url: parsed.subscriptionUrl!,
           ref: ref,
           context: context,
-          _depth: (_depth ?? 0) + 1,
+          depth: (depth ?? 0) + 1,
         );
       }
       // Has inline subscription data
